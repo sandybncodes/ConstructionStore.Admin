@@ -1,0 +1,129 @@
+@page "/categories/{Id:int}"
+@inject CategoryService CategorySvc
+@inject NavigationManager Nav
+@inject LocalizationService L10n
+
+<div class="page-header">
+    <button class="back-btn" @onclick="GoBack">← @L10n.T("common.back")</button>
+    <h2 class="page-title">@L10n.T("categories.details")</h2>
+</div>
+
+@if (_loading)
+{
+    <div class="loading-state">
+        <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+        <span>@L10n.T("common.loading")</span>
+    </div>
+}
+else if (_category is null)
+{
+    <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <p>@L10n.T("categories.notFound")</p>
+    </div>
+}
+else
+{
+    <div class="detail-card">
+        <div class="detail-card-header">
+            <div>
+                <h3 class="detail-title">@_category.Name</h3>
+                <div class="detail-sub">@L10n.T("common.id"): @_category.Id</div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                @if (!_edit)
+                {
+                    <button class="btn btn-outline-primary" @onclick="() => _edit = true">✏️ @L10n.T("common.edit")</button>
+                }
+                else
+                {
+                    <button class="btn btn-secondary" @onclick="Cancel">@L10n.T("common.cancel")</button>
+                    <button class="btn btn-primary" @onclick="Save">💾 @L10n.T("common.save")</button>
+                }
+            </div>
+        </div>
+
+        <div class="detail-body">
+            <div class="form-group">
+                <label class="form-label">@L10n.T("common.name")</label>
+                <input class="form-control" @bind="_editModel.Name" disabled="@(!_edit)" />
+            </div>
+            <div class="form-group mt-3">
+                <label class="form-label">@L10n.T("common.description")</label>
+                <textarea class="form-control" rows="4" @bind="_editModel.Description" disabled="@(!_edit)"></textarea>
+            </div>
+        </div>
+    </div>
+
+    @if (_saveMsg is not null)
+    {
+        <div class="status-toast @(_saveOk ? "toast-ok" : "toast-err")">@_saveMsg</div>
+    }
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private CategoryModel? _category;
+    private UpdateCategoryDto _editModel = new();
+    private bool _loading = true;
+    private bool _edit;
+    private string? _saveMsg;
+    private bool _saveOk;
+
+    void GoBack() => Nav.NavigateTo("/categories");
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    void Cancel()
+    {
+        _edit = false;
+        if (_category is not null)
+        {
+            _editModel.Name = _category.Name;
+            _editModel.Description = _category.Description;
+        }
+    }
+
+    async Task Save()
+    {
+        if (_category is null) return;
+        var ok = await CategorySvc.UpdateCategoryAsync(_category.Id, _editModel);
+        if (ok)
+        {
+            _category.Name = _editModel.Name;
+            _category.Description = _editModel.Description;
+            _edit = false;
+            _saveMsg = L10n.T("categories.saved");
+            _saveOk = true;
+        }
+        else
+        {
+            _saveMsg = L10n.T("categories.saveFailed");
+            _saveOk = false;
+        }
+        StateHasChanged();
+        await Task.Delay(3000);
+        _saveMsg = null;
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _saveMsg = null;
+        _category = await CategorySvc.GetCategoryAsync(Id);
+
+        if (_category is not null)
+        {
+            _editModel.Name = _category.Name;
+            _editModel.Description = _category.Description;
+        }
+
+        _loading = false;
+    }
+}

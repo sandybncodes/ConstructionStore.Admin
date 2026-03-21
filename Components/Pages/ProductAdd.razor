@@ -1,0 +1,129 @@
+@page "/products/new"
+@inject ProductService ProductSvc
+@inject CategoryService CategorySvc
+@inject NavigationManager Nav
+@inject LocalizationService L10n
+
+<div class="page-header">
+    <button class="back-btn" @onclick="GoBack">← @L10n.T("common.back")</button>
+    <h2 class="page-title">@L10n.T("products.addTitle")</h2>
+</div>
+
+@if (_loading)
+{
+    <div class="loading-state">
+        <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+        <span>@L10n.T("common.loading")</span>
+    </div>
+}
+else
+{
+    <div class="detail-card">
+        <div class="detail-card-header">
+            <div>
+                <h3 class="detail-title">@L10n.T("products.addNew")</h3>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-secondary" @onclick="GoBack">@L10n.T("common.cancel")</button>
+                <button class="btn btn-primary" @onclick="Save">💾 @L10n.T("common.save")</button>
+            </div>
+        </div>
+
+        <div class="detail-body">
+            <div class="form-grid form-grid-2">
+                <div class="form-group">
+                    <label class="form-label">@L10n.T("common.name")</label>
+                    <input class="form-control" @bind="_model.Name" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">@L10n.T("common.category")</label>
+                    <select class="form-select" @bind="_model.CategoryId">
+                        <option value="">— @L10n.T("common.none") —</option>
+                        @foreach (var category in _categories)
+                        {
+                            <option value="@category.Id">@category.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group mt-3">
+                <label class="form-label">@L10n.T("common.description")</label>
+                <textarea class="form-control" rows="3" @bind="_model.Description"></textarea>
+            </div>
+
+            <div class="form-grid form-grid-3 mt-3">
+                <div class="form-group">
+                    <label class="form-label">@L10n.T("common.price")</label>
+                    <div class="input-group">
+                        <span class="input-group-text">@L10n.T("common.currency")</span>
+                        <input type="number" class="form-control" @bind="_model.Price" step="0.01" min="0" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">@L10n.T("common.discount") (%)</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" @bind="_model.Discount" min="0" max="100" />
+                        <span class="input-group-text">%</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">@L10n.T("common.stockQuantity")</label>
+                    <input type="number" class="form-control" @bind="_model.StockQuantity" min="0" />
+                </div>
+            </div>
+
+            <div class="form-group mt-3">
+                <label class="form-label">@L10n.T("common.active")</label>
+                <div class="form-check form-switch mt-1">
+                    <input class="form-check-input" type="checkbox" id="chkNewProductActive" @bind="_model.IsActive" />
+                    <label class="form-check-label" for="chkNewProductActive">
+                        @(_model.IsActive ? L10n.T("products.activeVisible") : L10n.T("products.inactiveHidden"))
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (_saveMsg is not null)
+    {
+        <div class="status-toast @(_saveOk ? "toast-ok" : "toast-err")">@_saveMsg</div>
+    }
+}
+
+@code {
+    private readonly CreateProductDto _model = new() { IsActive = true };
+    private List<CategoryModel> _categories = new();
+    private bool _loading = true;
+    private string? _saveMsg;
+    private bool _saveOk;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _categories = await CategorySvc.GetCategoriesAsync();
+        _loading = false;
+    }
+
+    private void GoBack() => Nav.NavigateTo("/products");
+
+    private async Task Save()
+    {
+        var created = await ProductSvc.CreateProductAsync(_model);
+        if (created is not null)
+        {
+            _saveMsg = L10n.T("products.created");
+            _saveOk = true;
+            StateHasChanged();
+            await Task.Delay(600);
+            Nav.NavigateTo($"/products/{created.Id}");
+            return;
+        }
+
+        _saveMsg = L10n.T("products.createFailed");
+        _saveOk = false;
+        StateHasChanged();
+        await Task.Delay(3000);
+        _saveMsg = null;
+        StateHasChanged();
+    }
+}

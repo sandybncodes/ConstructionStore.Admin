@@ -1,0 +1,199 @@
+@page "/products/{Id:int}"
+@inject ProductService ProductSvc
+@inject CategoryService CategorySvc
+@inject NavigationManager Nav
+@inject LocalizationService L10n
+
+<div class="page-header">
+    <button class="back-btn" @onclick="GoBack">← @L10n.T("common.back")</button>
+    <h2 class="page-title">@L10n.T("products.details")</h2>
+</div>
+
+@if (_loading)
+{
+    <div class="loading-state">
+        <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+        <span>@L10n.T("common.loading")</span>
+    </div>
+}
+else if (_product is null)
+{
+    <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <p>@L10n.T("products.notFound")</p>
+    </div>
+}
+else
+{
+    <div class="detail-card">
+        <div class="detail-card-header">
+            <div>
+                <h3 class="detail-title">@_product.Name</h3>
+                <div class="detail-sub">@L10n.T("common.id"): @_product.Id · @L10n.T("products.addedOn") @L10n.FormatDate(_product.CreatedAt, "dd MMM yyyy")</div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                @if (_product.IsActive)
+                {
+                    <span class="active-badge">@L10n.TranslateActiveState(true)</span>
+                }
+                else
+                {
+                    <span class="inactive-badge">@L10n.TranslateActiveState(false)</span>
+                }
+                @if (!_edit)
+                {
+                    <button class="btn btn-outline-primary" @onclick="() => _edit = true">✏️ @L10n.T("common.edit")</button>
+                }
+                else
+                {
+                    <button class="btn btn-secondary" @onclick="CancelEdit">@L10n.T("common.cancel")</button>
+                    <button class="btn btn-primary" @onclick="Save">💾 @L10n.T("common.save")</button>
+                }
+            </div>
+        </div>
+
+        <div class="detail-body">
+            <div class="form-grid form-grid-2">
+                <div class="form-group">
+                    <label class="form-label">@L10n.T("common.name")</label>
+                    <input class="form-control" @bind="_editModel.Name" disabled="@(!_edit)" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">@L10n.T("common.category")</label>
+                    <select class="form-select" @bind="_editModel.CategoryId" disabled="@(!_edit)">
+                        <option value="">— @L10n.T("common.none") —</option>
+                        @foreach (var c in _categories)
+                        {
+                            <option value="@c.Id">@c.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group mt-3">
+                <label class="form-label">@L10n.T("common.description")</label>
+                <textarea class="form-control" rows="3" @bind="_editModel.Description" disabled="@(!_edit)"></textarea>
+            </div>
+
+            <div class="form-grid form-grid-3 mt-3">
+                <div class="form-group">
+                    <label class="form-label">@L10n.T("common.price")</label>
+                    <div class="input-group">
+                        <span class="input-group-text">@L10n.T("common.currency")</span>
+                        <input type="number" class="form-control" @bind="_editModel.Price" disabled="@(!_edit)" step="0.01" min="0" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">@L10n.T("common.discount") (%)</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" @bind="_editModel.Discount" disabled="@(!_edit)" min="0" max="100" />
+                        <span class="input-group-text">%</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">@L10n.T("common.stockQuantity")</label>
+                    <input type="number" class="form-control" @bind="_editModel.StockQuantity" disabled="@(!_edit)" min="0" />
+                </div>
+            </div>
+
+            <div class="form-group mt-3">
+                <label class="form-label">@L10n.T("common.active")</label>
+                <div class="form-check form-switch mt-1">
+                    <input class="form-check-input" type="checkbox" id="chkActive" @bind="_editModel.IsActive" disabled="@(!_edit)" />
+                    <label class="form-check-label" for="chkActive">
+                        @(_editModel.IsActive ? L10n.T("products.activeVisible") : L10n.T("products.inactiveHidden"))
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (_saveMsg is not null)
+    {
+        <div class="status-toast @(_saveOk ? "toast-ok" : "toast-err")">@_saveMsg</div>
+    }
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private ProductModel? _product;
+    private UpdateProductDto _editModel = new();
+    private List<CategoryModel> _categories = new();
+    private bool _loading = true;
+    private bool _edit;
+    private string? _saveMsg;
+    private bool _saveOk;
+
+    void GoBack() => Nav.NavigateTo("/products");
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    void CancelEdit()
+    {
+        _edit = false;
+        if (_product is not null)
+        {
+            _editModel.Name = _product.Name;
+            _editModel.Description = _product.Description;
+            _editModel.Price = _product.Price;
+            _editModel.Discount = _product.Discount;
+            _editModel.StockQuantity = _product.StockQuantity;
+            _editModel.CategoryId = _product.CategoryId;
+            _editModel.IsActive = _product.IsActive;
+        }
+    }
+
+    async Task Save()
+    {
+        if (_product is null) return;
+        var updated = await ProductSvc.UpdateProductAsync(_product.Id, _editModel);
+        if (updated is not null)
+        {
+            _product = updated;
+            _edit = false;
+            _saveMsg = L10n.T("products.saved");
+            _saveOk = true;
+        }
+        else
+        {
+            _saveMsg = L10n.T("products.saveFailed");
+            _saveOk = false;
+        }
+        StateHasChanged();
+        await Task.Delay(3000);
+        _saveMsg = null;
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _saveMsg = null;
+
+        var productTask = ProductSvc.GetProductAsync(Id);
+        var categoriesTask = CategorySvc.GetCategoriesAsync();
+        _product = await productTask;
+        _categories = await categoriesTask;
+
+        if (_product is not null)
+        {
+            _editModel = new UpdateProductDto
+            {
+                Name = _product.Name,
+                Description = _product.Description,
+                Price = _product.Price,
+                Discount = _product.Discount,
+                StockQuantity = _product.StockQuantity,
+                CategoryId = _product.CategoryId,
+                IsActive = _product.IsActive
+            };
+        }
+
+        _loading = false;
+    }
+}

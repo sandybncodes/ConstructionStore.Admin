@@ -1,0 +1,92 @@
+.dashboard-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.dashboard-title {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+    letter-spacing: -0.4px;
+}
+
+.dashboard-subtitle {
+    color: #64748b;
+    font-size: 0.95rem;
+    margin: 0.25rem 0 0;
+}
+
+/* ─── Quick Nav Grid ────────────────────────────────────────────── */
+.quick-nav-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.25rem;
+}
+
+.quick-nav-card {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 1.5rem;
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 14px;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+    position: relative;
+}
+
+.quick-nav-card:hover {
+    border-color: #e8621a;
+    box-shadow: 0 4px 20px rgba(232, 98, 26, 0.12);
+    transform: translateY(-2px);
+    color: inherit;
+    text-decoration: none;
+}
+
+.qnc-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.qnc-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.qnc-info h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 0.25rem;
+}
+
+.qnc-info p {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.qnc-arrow {
+    color: #cbd5e1;
+    flex-shrink: 0;
+    transition: color 0.2s, transform 0.2s;
+}
+
+.quick-nav-card:hover .qnc-arrow {
+    color: #e8621a;
+    transform: translateX(3px);
+}

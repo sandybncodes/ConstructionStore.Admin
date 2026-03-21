@@ -1,0 +1,123 @@
+@page "/orders"
+@inject OrderService OrderSvc
+@inject NavigationManager Nav
+@inject LocalizationService L10n
+
+<div class="sticky-list-header">
+    <div class="page-header sticky-panel-card sticky-panel-card-top">
+        <h2 class="page-title">@L10n.T("orders.title")</h2>
+        @if (!_loading)
+        {
+            <span class="page-count">@FilteredOrders.Count @L10n.T("orders.count")</span>
+        }
+    </div>
+
+    <div class="list-toolbar sticky-panel-card sticky-panel-card-toolbar">
+        <input class="search-input" @bind="_searchText" @bind:event="oninput" placeholder="@L10n.T("orders.search.placeholder")" />
+        <select class="filter-select" @bind="_selectedStatus">
+            <option value="">@L10n.T("orders.filter.status"): @L10n.T("common.all")</option>
+            @foreach (var status in L10n.GetOrderStatuses())
+            {
+                <option value="@status.Value">@status.Label</option>
+            }
+        </select>
+    </div>
+</div>
+
+@if (_loading)
+{
+    <div class="loading-state">
+        <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+        <span>@L10n.T("orders.loading")</span>
+    </div>
+}
+else if (FilteredOrders.Count == 0)
+{
+    <div class="empty-state">
+        <div class="empty-icon">🧾</div>
+        <p>@L10n.T("orders.empty")</p>
+    </div>
+}
+else
+{
+    <div class="table-wrap">
+        <table class="modern-table">
+            <thead>
+                <tr>
+                    <th>@L10n.T("orders.number")</th>
+                    <th>@L10n.T("common.customer")</th>
+                    <th>@L10n.T("common.date")</th>
+                    <th>@L10n.T("common.items")</th>
+                    <th>@L10n.T("common.total")</th>
+                    <th>@L10n.T("common.status")</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var o in FilteredOrders)
+                {
+                    <tr class="clickable" @onclick="() => OpenOrder(o.Id)">
+                        <td><span class="order-id">#@o.Id</span></td>
+                        <td>
+                            <div class="customer-name">@o.CustomerFullName</div>
+                            @if (!string.IsNullOrWhiteSpace(o.Email))
+                            {
+                                <div class="customer-sub">@o.Email</div>
+                            }
+                            else if (!string.IsNullOrWhiteSpace(o.Phone))
+                            {
+                                <div class="customer-sub">@o.Phone</div>
+                            }
+                        </td>
+                        <td style="white-space:nowrap">@L10n.FormatChisinauDate(o.OrderDate, "dd MMM yyyy · HH:mm")</td>
+                        <td>@o.OrderItems.Count</td>
+                        <td class="order-total">@L10n.FormatPrice(o.TotalPrice)</td>
+                        <td><span class="status-badge status-@NormalizeStatusCss(o.Status)">@L10n.TranslateOrderStatus(o.Status)</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private List<OrderModel> _orders = new();
+    private bool _loading = true;
+    private string _searchText = string.Empty;
+    private string _selectedStatus = string.Empty;
+
+    private List<OrderModel> FilteredOrders => _orders
+        .Where(order =>
+            (string.IsNullOrWhiteSpace(_searchText) ||
+             order.Id.ToString().Contains(_searchText, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrWhiteSpace(_selectedStatus) ||
+             NormalizeStatusValue(order.Status) == _selectedStatus))
+        .ToList();
+
+    void OpenOrder(int id) => Nav.NavigateTo($"/orders/{id}");
+
+    protected override async Task OnInitializedAsync()
+    {
+        _orders = (await OrderSvc.GetOrdersAsync())
+            .OrderByDescending(order => order.Id)
+            .ToList();
+        _loading = false;
+    }
+
+    private static string NormalizeStatusCss(string? status)
+    {
+        return (status?.Trim().ToLowerInvariant()) switch
+        {
+            "new" => "nou",
+            null => "new",
+            "" => "new",
+            var value => value
+        };
+    }
+
+    private static string NormalizeStatusValue(string? status)
+    {
+        return string.Equals(status?.Trim(), "NEW", StringComparison.OrdinalIgnoreCase)
+            ? "NOU"
+            : status?.Trim().ToUpperInvariant() ?? string.Empty;
+    }
+}

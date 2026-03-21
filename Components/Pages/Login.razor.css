@@ -1,0 +1,394 @@
+/* ─── Login Page Container ─────────────────────────────────────── */
+.login-page {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    overflow: hidden;
+}
+
+.login-wrapper {
+    display: flex;
+    height: 100%;
+}
+
+/* ─── Brand Panel (Left) ────────────────────────────────────────── */
+.brand-panel {
+    flex: 1;
+    background: linear-gradient(145deg, #0f172a 0%, #1e2d45 55%, #0f172a 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2.5rem;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Decorative glow orbs */
+.brand-panel::before {
+    content: '';
+    position: absolute;
+    top: -20%;
+    right: -15%;
+    width: 55%;
+    height: 60%;
+    background: radial-gradient(circle, rgba(232, 98, 26, 0.18) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.brand-panel::after {
+    content: '';
+    position: absolute;
+    bottom: -25%;
+    left: -10%;
+    width: 50%;
+    height: 55%;
+    background: radial-gradient(circle, rgba(245, 158, 11, 0.12) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.brand-content {
+    position: relative;
+    z-index: 1;
+    color: white;
+    text-align: center;
+    max-width: 380px;
+}
+
+.brand-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #e8621a 0%, #f59e0b 100%);
+    border-radius: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.75rem;
+    box-shadow: 0 8px 32px rgba(232, 98, 26, 0.45), 0 0 0 1px rgba(255,255,255,0.08);
+}
+
+.brand-title {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 0.4rem;
+    letter-spacing: -0.5px;
+}
+
+.brand-tagline {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #e8621a;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin-bottom: 1.25rem;
+}
+
+.brand-desc {
+    color: #94a3b8;
+    font-size: 0.95rem;
+    line-height: 1.7;
+    margin-bottom: 2.5rem;
+}
+
+.brand-features {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    text-align: left;
+}
+
+.feature-item {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    color: #cbd5e1;
+    font-size: 0.9rem;
+}
+
+.feature-check {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    background: rgba(232, 98, 26, 0.18);
+    border: 1.5px solid rgba(232, 98, 26, 0.5);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #f59e0b;
+}
+
+.brand-footer {
+    position: relative;
+    z-index: 1;
+    margin-top: auto;
+    color: #475569;
+    font-size: 0.8rem;
+    padding-top: 2rem;
+}
+
+/* ─── Form Panel (Right) ────────────────────────────────────────── */
+.form-panel {
+    width: 100%;
+    max-width: 520px;
+    background: #f8fafc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5rem 2rem;
+    overflow-y: auto;
+}
+
+.form-card {
+    width: 100%;
+    max-width: 400px;
+}
+
+/* Mobile logo (hidden on desktop) */
+.mobile-logo {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+}
+
+.mobile-logo-icon {
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, #e8621a, #f59e0b);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mobile-logo-text {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.3px;
+}
+
+/* Form header */
+.form-header {
+    margin-bottom: 2.25rem;
+}
+
+.form-header h2 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 0.4rem;
+    letter-spacing: -0.5px;
+}
+
+.form-header p {
+    color: #64748b;
+    font-size: 0.95rem;
+}
+
+/* ─── Form Fields ───────────────────────────────────────────────── */
+.field-group {
+    margin-bottom: 1.25rem;
+}
+
+.field-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 0.5rem;
+}
+
+.field-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.field-icon {
+    position: absolute;
+    left: 14px;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.field-input {
+    width: 100%;
+    height: 50px;
+    padding: 0 14px 0 44px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    color: #0f172a;
+    background: #ffffff;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.field-input.field-input-padded {
+    padding-right: 46px;
+}
+
+.field-input:focus {
+    border-color: #e8621a;
+    box-shadow: 0 0 0 3px rgba(232, 98, 26, 0.12);
+}
+
+.field-input::placeholder {
+    color: #a0aec0;
+}
+
+.field-toggle {
+    position: absolute;
+    right: 10px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    border-radius: 6px;
+    transition: color 0.2s, background-color 0.2s;
+    z-index: 1;
+}
+
+.field-toggle:hover {
+    color: #475569;
+    background-color: #f1f5f9;
+}
+
+.field-error {
+    display: block;
+    color: #ef4444;
+    font-size: 0.8rem;
+    margin-top: 0.4rem;
+    padding-left: 2px;
+}
+
+/* ─── Error Alert ───────────────────────────────────────────────── */
+.error-alert {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.8rem 1rem;
+    background: #fef2f2;
+    border: 1.5px solid #fecaca;
+    border-radius: 10px;
+    color: #dc2626;
+    font-size: 0.875rem;
+    margin-bottom: 1.25rem;
+    animation: slideIn 0.2s ease;
+}
+
+.error-icon {
+    flex-shrink: 0;
+    color: #ef4444;
+}
+
+/* ─── Sign In Button ────────────────────────────────────────────── */
+.btn-signin {
+    width: 100%;
+    height: 50px;
+    background: linear-gradient(to right, #e8621a 0%, #f59e0b 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    transition: filter 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+    margin-top: 0.5rem;
+    box-shadow: 0 4px 16px rgba(232, 98, 26, 0.4);
+    letter-spacing: 0.2px;
+}
+
+.btn-signin:hover:not(:disabled) {
+    filter: brightness(1.06);
+    box-shadow: 0 6px 24px rgba(232, 98, 26, 0.5);
+    transform: translateY(-1px);
+}
+
+.btn-signin:active:not(:disabled) {
+    transform: translateY(0);
+    filter: brightness(0.97);
+}
+
+.btn-signin:disabled {
+    opacity: 0.72;
+    cursor: not-allowed;
+}
+
+/* ─── Loading Spinner ───────────────────────────────────────────── */
+.btn-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2.5px solid rgba(255, 255, 255, 0.35);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+    flex-shrink: 0;
+}
+
+/* ─── Footer ────────────────────────────────────────────────────── */
+.form-footer {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.8rem;
+    margin-top: 2.5rem;
+}
+
+/* ─── Animations ────────────────────────────────────────────────── */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ─── Responsive ────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .brand-panel {
+        display: none;
+    }
+
+    .form-panel {
+        max-width: 100%;
+        background: #ffffff;
+        padding: 2rem 1.5rem;
+        align-items: flex-start;
+        padding-top: 3rem;
+    }
+
+    .mobile-logo {
+        display: flex;
+    }
+
+    .form-header {
+        text-align: center;
+    }
+}

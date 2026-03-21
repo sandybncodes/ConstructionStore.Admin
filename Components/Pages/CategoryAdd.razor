@@ -1,0 +1,66 @@
+@page "/categories/new"
+@inject CategoryService CategorySvc
+@inject NavigationManager Nav
+@inject LocalizationService L10n
+
+<div class="page-header">
+    <button class="back-btn" @onclick="GoBack">← @L10n.T("common.back")</button>
+    <h2 class="page-title">@L10n.T("categories.addTitle")</h2>
+</div>
+
+<div class="detail-card">
+    <div class="detail-card-header">
+        <div>
+            <h3 class="detail-title">@L10n.T("categories.addNew")</h3>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-secondary" @onclick="GoBack">@L10n.T("common.cancel")</button>
+            <button class="btn btn-primary" @onclick="Save">💾 @L10n.T("common.save")</button>
+        </div>
+    </div>
+
+    <div class="detail-body">
+        <div class="form-group">
+            <label class="form-label">@L10n.T("common.name")</label>
+            <input class="form-control" @bind="_model.Name" />
+        </div>
+        <div class="form-group mt-3">
+            <label class="form-label">@L10n.T("common.description")</label>
+            <textarea class="form-control" rows="4" @bind="_model.Description"></textarea>
+        </div>
+    </div>
+</div>
+
+@if (_saveMsg is not null)
+{
+    <div class="status-toast @(_saveOk ? "toast-ok" : "toast-err")">@_saveMsg</div>
+}
+
+@code {
+    private readonly CreateCategoryDto _model = new();
+    private string? _saveMsg;
+    private bool _saveOk;
+
+    private void GoBack() => Nav.NavigateTo("/categories");
+
+    private async Task Save()
+    {
+        var created = await CategorySvc.CreateCategoryAsync(_model);
+        if (created is not null)
+        {
+            _saveMsg = L10n.T("categories.created");
+            _saveOk = true;
+            StateHasChanged();
+            await Task.Delay(600);
+            Nav.NavigateTo($"/categories/{created.Id}");
+            return;
+        }
+
+        _saveMsg = L10n.T("categories.createFailed");
+        _saveOk = false;
+        StateHasChanged();
+        await Task.Delay(3000);
+        _saveMsg = null;
+        StateHasChanged();
+    }
+}

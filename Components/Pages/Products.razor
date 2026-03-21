@@ -1,0 +1,156 @@
+@page "/products"
+@inject ProductService ProductSvc
+@inject CategoryService CategorySvc
+@inject NavigationManager Nav
+@inject LocalizationService L10n
+@implements IDisposable
+
+<div class="sticky-list-header">
+    <div class="page-header sticky-panel-card sticky-panel-card-top">
+        <h2 class="page-title">@L10n.T("products.title")</h2>
+        <div class="page-header-actions">
+            @if (!_loading)
+            {
+                <span class="page-count">@FilteredProducts.Count @L10n.T("products.count")</span>
+            }
+            <button class="btn btn-primary" @onclick='() => Nav.NavigateTo("/products/new")'>+ @L10n.T("products.addNew")</button>
+        </div>
+    </div>
+
+    <div class="list-toolbar sticky-panel-card sticky-panel-card-toolbar">
+        <input class="search-input" @bind="_searchText" @bind:event="oninput" placeholder="@L10n.T("products.search.placeholder")" />
+    </div>
+</div>
+
+@if (_loading)
+{
+    <div class="loading-state">
+        <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+        <span>@L10n.T("products.loading")</span>
+    </div>
+}
+else if (FilteredProducts.Count == 0)
+{
+    <div class="empty-state">
+        <div class="empty-icon">📦</div>
+        <p>@L10n.T("products.empty")</p>
+    </div>
+}
+else
+{
+    <div class="product-grid">
+        @foreach (var p in FilteredProducts)
+        {
+            <div class="product-card" @onclick="() => ViewProduct(p.Id)">
+                <div class="product-card-header">
+                    <div>
+                        <div class="product-name">@p.Name</div>
+                        <div class="product-meta">@L10n.T("common.id"): @p.Id</div>
+                    </div>
+                    @if (p.IsActive)
+                    {
+                        <span class="active-badge">@L10n.TranslateActiveState(true)</span>
+                    }
+                    else
+                    {
+                        <span class="inactive-badge">@L10n.TranslateActiveState(false)</span>
+                    }
+                </div>
+                <div class="product-card-body">
+                    @if (!string.IsNullOrWhiteSpace(p.Description))
+                    {
+                        <span class="product-description">@p.Description</span>
+                    }
+                    @if (!string.IsNullOrEmpty(GetCategoryName(p.CategoryId)))
+                    {
+                        <span class="product-category">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" fill="currentColor" viewBox="0 0 16 16" style="margin-right:3px"><path d="M1 2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1zM1 7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1z"/></svg>
+                            @GetCategoryName(p.CategoryId)
+                        </span>
+                    }
+                </div>
+                <div class="product-card-footer">
+                    <div>
+                        @if (p.Discount > 0)
+                        {
+                            <span class="product-price">@L10n.FormatPrice(p.Price * (1 - p.Discount / 100m))</span>
+                            <span class="product-price-strike ms-1">@L10n.FormatPrice(p.Price)</span>
+                        }
+                        else
+                        {
+                            <span class="product-price">@L10n.FormatPrice(p.Price)</span>
+                        }
+                    </div>
+                    <span class="product-stock">@L10n.T("products.stock"): @p.StockQuantity</span>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<ProductModel> _products = new();
+    private List<CategoryModel> _categories = new();
+    private bool _loading = true;
+    private string _searchText = string.Empty;
+    private bool _subscribed;
+
+    private List<ProductModel> FilteredProducts => _products
+        .Where(product =>
+            string.IsNullOrWhiteSpace(_searchText) ||
+            product.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+            product.Id.ToString().Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+        .ToList();
+
+    protected override void OnInitialized()
+    {
+        Nav.LocationChanged += OnLocationChanged;
+        _subscribed = true;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    void ViewProduct(int id) => Nav.NavigateTo($"/products/{id}");
+
+    string GetCategoryName(int? categoryId) =>
+        _categories.FirstOrDefault(c => c.Id == categoryId)?.Name ?? string.Empty;
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        var productsTask = ProductSvc.GetProductsAsync();
+        var categoriesTask = CategorySvc.GetCategoriesAsync();
+        _products = await productsTask;
+        _categories = await categoriesTask;
+        _loading = false;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        if (IsProductsRoute(e.Location))
+        {
+            _ = InvokeAsync(async () =>
+            {
+                await LoadAsync();
+                StateHasChanged();
+            });
+        }
+    }
+
+    private static bool IsProductsRoute(string uri)
+    {
+        var path = new Uri(uri).AbsolutePath.TrimEnd('/');
+        return string.Equals(path, "/products", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public void Dispose()
+    {
+        if (_subscribed)
+        {
+            Nav.LocationChanged -= OnLocationChanged;
+        }
+    }
+}

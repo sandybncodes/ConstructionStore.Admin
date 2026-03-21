@@ -1,0 +1,194 @@
+@page "/orders/{Id:int}"
+@inject OrderService OrderSvc
+@inject NavigationManager Nav
+@inject LocalizationService L10n
+
+<div class="page-header">
+    <button class="back-btn" @onclick="GoBack">← @L10n.T("common.back")</button>
+    <h2 class="page-title">@L10n.T("orders.details")</h2>
+</div>
+
+@if (_loading)
+{
+    <div class="loading-state">
+        <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+        <span>@L10n.T("orders.loadingSingle")</span>
+    </div>
+}
+else if (_order is null)
+{
+    <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <p>@L10n.T("orders.notFound")</p>
+    </div>
+}
+else
+{
+    <div class="detail-card">
+        <div class="detail-card-header">
+            <div>
+                <h3 class="detail-title">@L10n.T("orders.number") <span class="order-id">#@_order.Id</span></h3>
+                <div class="detail-sub">@L10n.T("orders.placedOn") @L10n.FormatChisinauDate(_order.OrderDate, "dd MMMM yyyy · HH:mm")</div>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <span class="status-badge status-@NormalizeStatusCss(_order.Status)">@L10n.TranslateOrderStatus(_order.Status)</span>
+                <div class="status-change-wrap">
+                    <label class="form-label mb-0 me-2" style="font-size:0.78rem">@L10n.T("orders.changeStatus"):</label>
+                    <select class="status-select" value="@NormalizeStatusValue(_order.Status)"
+                            @onchange="async e => await ChangeStatus(e.Value?.ToString())">
+                        @foreach (var status in L10n.GetOrderStatuses())
+                        {
+                            <option value="@status.Value">@status.Label</option>
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-body">
+
+            <!-- Customer Information -->
+            <div class="detail-section">
+                <div class="detail-section-title">@L10n.T("orders.customerInfo")</div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">@L10n.T("common.name")</span>
+                        <span class="info-value">@_order.CustomerFullName</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">@L10n.T("common.phone")</span>
+                        <span class="info-value">@(string.IsNullOrWhiteSpace(_order.Phone) ? "—" : _order.Phone)</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">@L10n.T("common.email")</span>
+                        <span class="info-value">@(string.IsNullOrWhiteSpace(_order.Email) ? "—" : _order.Email)</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">@L10n.T("orders.deliveryAddress")</span>
+                        <span class="info-value">@(string.IsNullOrWhiteSpace(_order.Address) ? "—" : _order.Address)</span>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(_order.Notes))
+                    {
+                        <div class="info-item" style="grid-column: 1 / -1">
+                            <span class="info-label">@L10n.T("common.notes")</span>
+                            <span class="info-value">@_order.Notes</span>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Order Items -->
+            <div class="detail-section">
+                <div class="detail-section-title">@L10n.T("orders.orderedProducts") (@_order.OrderItems.Count)</div>
+                <div class="table-wrap">
+                    <table class="modern-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>@L10n.T("nav.products")</th>
+                                <th style="text-align:center">@L10n.T("common.quantityAbbr")</th>
+                                <th style="text-align:right">@L10n.T("common.unitPrice")</th>
+                                <th style="text-align:right">@L10n.T("common.subtotal")</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{int lineNo = 1;}
+                            @foreach (var item in _order.OrderItems)
+                            {
+                                <tr>
+                                    <td style="color:#94a3b8;font-size:0.8rem">@(lineNo++)</td>
+                                    <td>
+                                        <div class="customer-name">@(item.Product?.Name ?? L10n.ProductLabel(item.ProductId))</div>
+                                        @if (!string.IsNullOrWhiteSpace(item.Product?.Description))
+                                        {
+                                            <div class="customer-sub">@item.Product.Description</div>
+                                        }
+                                    </td>
+                                    <td style="text-align:center;font-weight:600">@item.Quantity</td>
+                                    <td style="text-align:right">@L10n.FormatPrice(item.Price)</td>
+                                    <td style="text-align:right" class="order-total">@L10n.FormatPrice(item.Price * item.Quantity)</td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="4" style="text-align:right;font-weight:700;padding:1rem;border-top:2px solid #e2e8f0;font-size:0.85rem;color:#64748b;text-transform:uppercase;letter-spacing:0.04em">@L10n.T("common.total")</td>
+                                <td style="text-align:right;font-weight:700;padding:1rem;border-top:2px solid #e2e8f0;font-size:1.1rem;color:#e8621a">@L10n.FormatPrice(_order.TotalPrice)</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    @if (_statusMsg is not null)
+    {
+        <div class="status-toast @(_statusOk ? "toast-ok" : "toast-err")">@_statusMsg</div>
+    }
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private OrderModel? _order;
+    private bool _loading = true;
+    private string? _statusMsg;
+    private bool _statusOk;
+
+    void GoBack() => Nav.NavigateTo("/orders");
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    async Task ChangeStatus(string? status)
+    {
+        if (string.IsNullOrEmpty(status) || _order is null) return;
+        var ok = await OrderSvc.UpdateOrderStatusAsync(_order.Id, status);
+        if (ok)
+        {
+            _order.Status = status;
+            _statusMsg = L10n.T("orders.updated");
+            _statusOk = true;
+        }
+        else
+        {
+            _statusMsg = L10n.T("orders.updateFailed");
+            _statusOk = false;
+        }
+        StateHasChanged();
+        await Task.Delay(3000);
+        _statusMsg = null;
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _statusMsg = null;
+        _order = await OrderSvc.GetOrderAsync(Id);
+        _loading = false;
+    }
+
+    private static string NormalizeStatusCss(string? status)
+    {
+        return (status?.Trim().ToLowerInvariant()) switch
+        {
+            "new" => "nou",
+            null => "new",
+            "" => "new",
+            var value => value
+        };
+    }
+
+    private static string NormalizeStatusValue(string? status)
+    {
+        return string.Equals(status?.Trim(), "NEW", StringComparison.OrdinalIgnoreCase)
+            ? "NOU"
+            : status ?? "NOU";
+    }
+}

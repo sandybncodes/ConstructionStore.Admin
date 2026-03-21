@@ -1,0 +1,126 @@
+/* ─── Toggler (mobile hamburger) ────────────────────────────────── */
+.navbar-toggler {
+    appearance: none;
+    cursor: pointer;
+    width: 3.5rem;
+    height: 2.5rem;
+    color: white;
+    position: absolute;
+    top: 0.5rem;
+    right: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    background: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.6%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") no-repeat center/1.75rem transparent;
+    transition: background-color 0.2s;
+}
+
+.navbar-toggler:checked {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* ─── Top row in nav (brand bar) ────────────────────────────────── */
+.top-row {
+    min-height: 3.75rem;
+    background-color: rgba(0, 0, 0, 0.25);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.navbar-brand-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.navbar-brand-icon {
+    width: 34px;
+    height: 34px;
+    background: linear-gradient(135deg, #e8621a, #f59e0b);
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(232, 98, 26, 0.45);
+}
+
+.navbar-brand {
+    font-size: 1rem;
+    font-weight: 700;
+    color: white;
+    letter-spacing: -0.2px;
+}
+
+/* ─── Section labels ────────────────────────────────────────────── */
+.nav-section-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #475569;
+    padding: 1.25rem 1rem 0.4rem;
+}
+
+/* ─── Nav items ─────────────────────────────────────────────────── */
+.nav-item {
+    font-size: 0.9rem;
+    padding-bottom: 2px;
+}
+
+.nav-item ::deep .nav-link {
+    color: #94a3b8;
+    background: none;
+    border: none;
+    border-radius: 8px;
+    height: 2.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    width: 100%;
+    padding: 0 0.75rem;
+    font-weight: 500;
+    transition: color 0.2s, background-color 0.2s;
+    text-decoration: none;
+}
+
+.nav-item ::deep a.active {
+    background-color: rgba(232, 98, 26, 0.18);
+    color: #fb923c;
+}
+
+.nav-item ::deep .nav-link:hover:not(.active) {
+    background-color: rgba(255, 255, 255, 0.06);
+    color: #e2e8f0;
+}
+
+/* ─── Nav SVG icon ──────────────────────────────────────────────── */
+.nav-icon {
+    width: 1.1rem;
+    height: 1.1rem;
+    flex-shrink: 0;
+    opacity: 0.85;
+}
+
+.nav-item ::deep a.active .nav-icon {
+    opacity: 1;
+}
+
+/* ─── Show/hide logic ───────────────────────────────────────────── */
+.nav-scrollable {
+    display: none;
+}
+
+.navbar-toggler:checked ~ .nav-scrollable {
+    display: block;
+}
+
+@media (min-width: 641px) {
+    .navbar-toggler {
+        display: none;
+    }
+
+    .nav-scrollable {
+        display: block;
+        height: calc(100vh - 3.75rem);
+        overflow-y: auto;
+    }
+}

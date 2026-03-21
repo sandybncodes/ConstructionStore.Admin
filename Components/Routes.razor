@@ -1,0 +1,257 @@
+﻿@inject AuthStateService Auth
+@inject LocalizationService L10n
+@inject OrderService OrderSvc
+@inject NavigationManager Nav
+@implements IDisposable
+
+@if (!_initialized)
+{
+    <div class="app-splash">
+        <div class="app-splash-content">
+            <div class="app-splash-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="white" viewBox="0 0 16 16">
+                    <path d="M8.186 1.113a.5.5 0 0 0-.372 0L1.846 3.5 8 5.961 14.154 3.5 8.186 1.113zM15 4.239l-6.5 2.6v7.922l6.5-2.6V4.24zm-7 10.5L1 12.16V4.24l7 2.6v7.899z" />
+                </svg>
+            </div>
+            <div class="app-splash-spinner"></div>
+        </div>
+    </div>
+}
+else if (!Auth.IsAuthenticated)
+{
+    <Login />
+}
+else
+{
+    <Router AppAssembly="typeof(MauiProgram).Assembly" NotFoundPage="typeof(NotFound)">
+        <Found Context="routeData">
+            <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+            <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        </Found>
+    </Router>
+
+    @if (_activeDialogType != NotificationDialogType.None)
+    {
+        <div class="dialog-backdrop">
+            <div class="dialog-card">
+                <div class="dialog-icon">🛎️</div>
+                <h3 class="dialog-title">@DialogTitle</h3>
+                <p class="dialog-text">@DialogMessage</p>
+                <div class="dialog-actions">
+                    <button class="btn btn-secondary" @onclick="CloseDialog">@L10n.T("common.okClose")</button>
+                    <button class="btn btn-primary" @onclick="GoToOrders">@L10n.T("orders.goToOrders")</button>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private enum NotificationDialogType
+    {
+        None,
+        LoginSummary,
+        RecentOrders
+    }
+
+    private static readonly TimeSpan RecentOrderWindow = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan OrderPollingInterval = TimeSpan.FromSeconds(30);
+
+    private bool _initialized;
+    private NotificationDialogType _activeDialogType;
+    private int _dialogOrderCount;
+    private CancellationTokenSource? _orderPollingCts;
+    private Task? _orderPollingTask;
+    private readonly HashSet<int> _knownRecentOrderIds = new();
+
+    private string DialogTitle => _activeDialogType switch
+    {
+        NotificationDialogType.LoginSummary => L10n.T("orders.newSummaryTitle"),
+        NotificationDialogType.RecentOrders => L10n.T("orders.recentPlacedTitle"),
+        _ => string.Empty
+    };
+
+    private string DialogMessage => _activeDialogType switch
+    {
+        NotificationDialogType.LoginSummary => string.Format(L10n.T("orders.newSummaryMessage"), _dialogOrderCount),
+        NotificationDialogType.RecentOrders => string.Format(L10n.T("orders.recentPlacedMessage"), _dialogOrderCount),
+        _ => string.Empty
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        Auth.AuthStateChanged += OnAuthStateChanged;
+        await L10n.InitializeAsync();
+        await Auth.InitializeAsync();
+        if (Auth.IsAuthenticated)
+        {
+            await StartOrderMonitoringAsync();
+        }
+        _initialized = true;
+    }
+
+    private void OnAuthStateChanged()
+    {
+        _ = InvokeAsync(HandleAuthStateChangedAsync);
+    }
+
+    private async Task HandleAuthStateChangedAsync()
+    {
+        if (Auth.IsAuthenticated && Auth.WasJustLoggedIn)
+        {
+            var orders = await OrderSvc.GetOrdersAsync();
+            _dialogOrderCount = orders.Count(order =>
+                string.Equals(order.Status?.Trim(), "NOU", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(order.Status?.Trim(), "NEW", StringComparison.OrdinalIgnoreCase));
+            if (_dialogOrderCount > 0)
+            {
+                _activeDialogType = NotificationDialogType.LoginSummary;
+            }
+
+            PrimeRecentOrders(orders);
+            await StartOrderMonitoringAsync();
+            Auth.MarkLoginNotificationHandled();
+        }
+        else if (Auth.IsAuthenticated)
+        {
+            await StartOrderMonitoringAsync();
+        }
+        else
+        {
+            StopOrderMonitoring();
+            _activeDialogType = NotificationDialogType.None;
+            _dialogOrderCount = 0;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task StartOrderMonitoringAsync()
+    {
+        if (_orderPollingTask is not null && !_orderPollingTask.IsCompleted)
+        {
+            return;
+        }
+
+        StopOrderMonitoring();
+
+        var currentOrders = await OrderSvc.GetOrdersAsync();
+        PrimeRecentOrders(currentOrders);
+
+        _orderPollingCts = new CancellationTokenSource();
+        _orderPollingTask = MonitorRecentOrdersAsync(_orderPollingCts.Token);
+    }
+
+    private async Task MonitorRecentOrdersAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(OrderPollingInterval);
+
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                var orders = await OrderSvc.GetOrdersAsync();
+                var recentOrders = orders
+                    .Where(order => IsRecentOrder(order.OrderDate))
+                    .OrderBy(order => order.Id)
+                    .ToList();
+
+                var newlyDetected = recentOrders
+                    .Where(order => _knownRecentOrderIds.Add(order.Id))
+                    .ToList();
+
+                if (newlyDetected.Count > 0)
+                {
+                    await InvokeAsync(() =>
+                    {
+                        _dialogOrderCount = newlyDetected.Count;
+                        _activeDialogType = NotificationDialogType.RecentOrders;
+                        StateHasChanged();
+                    });
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch
+        {
+        }
+    }
+
+    private void PrimeRecentOrders(IEnumerable<OrderModel> orders)
+    {
+        foreach (var orderId in orders.Where(order => IsRecentOrder(order.OrderDate)).Select(order => order.Id))
+        {
+            _knownRecentOrderIds.Add(orderId);
+        }
+    }
+
+    private static bool IsRecentOrder(DateTime orderDate)
+    {
+        return NormalizeOrderDate(orderDate) >= DateTime.UtcNow.Subtract(RecentOrderWindow);
+    }
+
+    private static DateTime NormalizeOrderDate(DateTime value)
+    {
+        if (value.Kind == DateTimeKind.Unspecified)
+        {
+            var chisinauLocal = DateTime.SpecifyKind(value, DateTimeKind.Unspecified);
+            return TimeZoneInfo.ConvertTimeToUtc(chisinauLocal, ResolveChisinauTimeZone());
+        }
+
+        return value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => value
+        };
+    }
+
+    private static TimeZoneInfo ResolveChisinauTimeZone()
+    {
+        foreach (var timeZoneId in new[] { "Europe/Chisinau", "E. Europe Standard Time", "GTB Standard Time" })
+        {
+            try
+            {
+                return TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+            }
+            catch (TimeZoneNotFoundException)
+            {
+            }
+            catch (InvalidTimeZoneException)
+            {
+            }
+        }
+
+        return TimeZoneInfo.Local;
+    }
+
+    private void StopOrderMonitoring()
+    {
+        _orderPollingCts?.Cancel();
+        _orderPollingCts?.Dispose();
+        _orderPollingCts = null;
+        _orderPollingTask = null;
+        _knownRecentOrderIds.Clear();
+    }
+
+    private void CloseDialog()
+    {
+        _activeDialogType = NotificationDialogType.None;
+        _dialogOrderCount = 0;
+    }
+
+    private void GoToOrders()
+    {
+        _activeDialogType = NotificationDialogType.None;
+        _dialogOrderCount = 0;
+        Nav.NavigateTo("/orders");
+    }
+
+    public void Dispose()
+    {
+        Auth.AuthStateChanged -= OnAuthStateChanged;
+        StopOrderMonitoring();
+    }
+}
