@@ -5,8 +5,8 @@ namespace ConstructionStore.Admin;
 
 public static class MauiProgram
 {
-	// Change this to match your API's base URL
-	private const string ApiBaseUrl = "https://localhost:7242/";
+	private const string LocalApiBaseUrl = "https://localhost:7242/";
+	private const string ProductionApiBaseUrl = "https://constructionstore-api.onrender.com/";
 
 	public static MauiApp CreateMauiApp()
 	{
@@ -22,7 +22,7 @@ public static class MauiProgram
 
 		builder.Services.AddSingleton(_ => new HttpClient
 		{
-			BaseAddress = new Uri(ApiBaseUrl)
+			BaseAddress = new Uri(GetApiBaseUrl())
 		});
 		builder.Services.AddSingleton<LocalizationService>();
 		builder.Services.AddSingleton<AuthStateService>();
@@ -36,5 +36,14 @@ public static class MauiProgram
 #endif
 
 		return builder.Build();
+	}
+
+	private static string GetApiBaseUrl()
+	{
+#if DEBUG
+		return LocalApiBaseUrl;
+#else
+		return ProductionApiBaseUrl;
+#endif
 	}
 }
