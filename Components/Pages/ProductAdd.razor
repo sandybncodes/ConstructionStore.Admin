@@ -3,6 +3,7 @@
 @inject CategoryService CategorySvc
 @inject NavigationManager Nav
 @inject LocalizationService L10n
+@using Microsoft.AspNetCore.Components.Forms
 
 <div class="page-header">
     <button class="back-btn" @onclick="GoBack">← @L10n.T("common.back")</button>
@@ -82,6 +83,22 @@ else
                     </label>
                 </div>
             </div>
+
+            <div class="form-group mt-3">
+                <label class="form-label">@L10n.T("common.images")</label>
+                <InputFile OnChange="OnImagesSelected" multiple accept=".jpg,.jpeg,.png,.webp,.gif" class="form-control" />
+                <div class="form-text">@L10n.T("products.imagesHelp")</div>
+                @if (_selectedImages.Count > 0)
+                {
+                    <div class="mt-2 small text-muted">@_selectedImages.Count @L10n.T("products.imagesSelected")</div>
+                    <ul class="small mt-2 mb-0 ps-3">
+                        @foreach (var image in _selectedImages)
+                        {
+                            <li>@image.Name</li>
+                        }
+                    </ul>
+                }
+            </div>
         </div>
     </div>
 
@@ -94,7 +111,9 @@ else
 @code {
     private readonly CreateProductDto _model = new() { IsActive = true };
     private List<CategoryModel> _categories = new();
+    private List<IBrowserFile> _selectedImages = new();
     private bool _loading = true;
+    private bool _saving;
     private string? _saveMsg;
     private bool _saveOk;
 
@@ -106,24 +125,71 @@ else
 
     private void GoBack() => Nav.NavigateTo("/products");
 
+    private void OnImagesSelected(InputFileChangeEventArgs args)
+    {
+        _selectedImages = args.GetMultipleFiles().ToList();
+    }
+
     private async Task Save()
     {
+        if (_saving)
+        {
+            return;
+        }
+
+        if (_selectedImages.Any(file => !IsSupportedImage(file)))
+        {
+            _saveMsg = L10n.T("products.imagesValidation");
+            _saveOk = false;
+            StateHasChanged();
+            await Task.Delay(3000);
+            _saveMsg = null;
+            StateHasChanged();
+            return;
+        }
+
+        _saving = true;
         var created = await ProductSvc.CreateProductAsync(_model);
         if (created is not null)
         {
-            _saveMsg = L10n.T("products.created");
-            _saveOk = true;
+            if (_selectedImages.Count > 0)
+            {
+                var uploadResult = await ProductSvc.UploadProductImagesAsync(created.Id, _selectedImages);
+                _saveMsg = uploadResult.Success ? L10n.T("products.created") : L10n.T("products.imagesUploadFailed");
+                _saveOk = uploadResult.Success;
+            }
+            else
+            {
+                _saveMsg = L10n.T("products.created");
+                _saveOk = true;
+            }
+
+            _saving = false;
             StateHasChanged();
-            await Task.Delay(600);
+            await Task.Delay(900);
             Nav.NavigateTo($"/products/{created.Id}");
             return;
         }
 
         _saveMsg = L10n.T("products.createFailed");
         _saveOk = false;
+        _saving = false;
         StateHasChanged();
         await Task.Delay(3000);
         _saveMsg = null;
         StateHasChanged();
+    }
+
+    private static bool IsSupportedImage(IBrowserFile file)
+    {
+        var allowedContentTypes = new[]
+        {
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/gif"
+        };
+
+        return allowedContentTypes.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase);
     }
 }

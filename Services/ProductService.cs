@@ -1,18 +1,43 @@
 using System.Net.Http.Json;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using Microsoft.AspNetCore.Components.Forms;
 
 namespace ConstructionStore.Admin.Services;
 
 public class ProductImage
 {
+    private string? _imageUrl;
+
+    public int Id { get; set; }
     public int ProductId { get; set; }
-    public string ImageUrl { get; set; } = string.Empty;
+    public string ImageUrl
+    {
+        get => _imageUrl ?? string.Empty;
+        set => _imageUrl = value;
+    }
+
     public bool IsMain { get; set; }
+}
+
+public sealed class ProductImageUploadResult
+{
+    public bool Success { get; init; }
+    public string? ErrorMessage { get; init; }
+    public IReadOnlyList<ProductImage> Images { get; init; } = Array.Empty<ProductImage>();
+}
+
+public sealed class ProductImageDeleteResult
+{
+    public bool Success { get; init; }
+    public string? ErrorMessage { get; init; }
+    public ProductModel? Product { get; init; }
 }
 
 public class ProductModel
 {
+    private List<ProductImage>? _images;
+
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
@@ -22,8 +47,12 @@ public class ProductModel
     public int? CategoryId { get; set; }
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
-    public object? Category { get; set; }
-    public List<ProductImage> Images { get; set; } = new();
+    public CategoryModel? Category { get; set; }
+    public List<ProductImage> Images
+    {
+        get => _images ??= new List<ProductImage>();
+        set => _images = value ?? new List<ProductImage>();
+    }
 }
 
 public class UpdateProductDto
@@ -53,6 +82,7 @@ public class ProductService
     private readonly HttpClient _http;
     private readonly AuthStateService _auth;
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+    private const long MaxUploadSizeBytes = 10 * 1024 * 1024;
 
     public ProductService(HttpClient http, AuthStateService auth)
     {
@@ -141,6 +171,95 @@ public class ProductService
         catch
         {
             return null;
+        }
+    }
+
+    public async Task<ProductImageUploadResult> UploadProductImagesAsync(int productId, IReadOnlyList<IBrowserFile> files)
+    {
+        if (files.Count == 0)
+        {
+            return new ProductImageUploadResult { Success = true };
+        }
+
+        try
+        {
+            using var content = new MultipartFormDataContent();
+
+            foreach (var file in files)
+            {
+                var stream = file.OpenReadStream(MaxUploadSizeBytes);
+                var streamContent = new StreamContent(stream);
+                streamContent.Headers.ContentType = MediaTypeHeaderValue.Parse(file.ContentType);
+                content.Add(streamContent, "files", file.Name);
+            }
+
+            using var req = new HttpRequestMessage(HttpMethod.Post, $"api/admin/products/{productId}/images")
+            {
+                Content = content
+            };
+
+            AddAuthorizationHeader(req);
+
+            using var resp = await _http.SendAsync(req);
+            if (!resp.IsSuccessStatusCode)
+            {
+                return new ProductImageUploadResult
+                {
+                    Success = false,
+                    ErrorMessage = await resp.Content.ReadAsStringAsync()
+                };
+            }
+
+            var json = await resp.Content.ReadAsStringAsync();
+            var images = JsonSerializer.Deserialize<List<ProductImage>>(json, JsonOptions) ?? new List<ProductImage>();
+            return new ProductImageUploadResult
+            {
+                Success = true,
+                Images = images
+            };
+        }
+        catch (Exception exception)
+        {
+            return new ProductImageUploadResult
+            {
+                Success = false,
+                ErrorMessage = exception.Message
+            };
+        }
+    }
+
+    public async Task<ProductImageDeleteResult> DeleteProductImageAsync(int productId, int imageId)
+    {
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Delete, $"api/admin/products/{productId}/images/{imageId}");
+
+            AddAuthorizationHeader(req);
+
+            using var resp = await _http.SendAsync(req);
+            if (!resp.IsSuccessStatusCode)
+            {
+                return new ProductImageDeleteResult
+                {
+                    Success = false,
+                    ErrorMessage = await resp.Content.ReadAsStringAsync()
+                };
+            }
+
+            var json = await resp.Content.ReadAsStringAsync();
+            return new ProductImageDeleteResult
+            {
+                Success = true,
+                Product = JsonSerializer.Deserialize<ProductModel>(json, JsonOptions)
+            };
+        }
+        catch (Exception exception)
+        {
+            return new ProductImageDeleteResult
+            {
+                Success = false,
+                ErrorMessage = exception.Message
+            };
         }
     }
 

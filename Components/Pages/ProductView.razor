@@ -3,6 +3,7 @@
 @inject CategoryService CategorySvc
 @inject NavigationManager Nav
 @inject LocalizationService L10n
+@using Microsoft.AspNetCore.Components.Forms
 
 <div class="page-header">
     <button class="back-btn" @onclick="GoBack">← @L10n.T("common.back")</button>
@@ -46,64 +47,206 @@ else
                 }
                 else
                 {
-                    <button class="btn btn-secondary" @onclick="CancelEdit">@L10n.T("common.cancel")</button>
-                    <button class="btn btn-primary" @onclick="Save">💾 @L10n.T("common.save")</button>
+                    <button class="btn btn-secondary" @onclick="CancelEdit" disabled="@(_saving || _imageActionBusy)">@L10n.T("common.cancel")</button>
+                    <button class="btn btn-primary" @onclick="Save" disabled="@(_saving || _imageActionBusy)">💾 @L10n.T("common.save")</button>
                 }
             </div>
         </div>
 
         <div class="detail-body">
-            <div class="form-grid form-grid-2">
-                <div class="form-group">
-                    <label class="form-label">@L10n.T("common.name")</label>
-                    <input class="form-control" @bind="_editModel.Name" disabled="@(!_edit)" />
-                </div>
-                <div class="form-group">
-                    <label class="form-label">@L10n.T("common.category")</label>
-                    <select class="form-select" @bind="_editModel.CategoryId" disabled="@(!_edit)">
-                        <option value="">— @L10n.T("common.none") —</option>
-                        @foreach (var c in _categories)
+            <div class="product-detail-layout">
+                <section class="product-gallery-panel">
+                    <div class="detail-section-title">@L10n.T("products.imagesGallery")</div>
+
+                    @if (CurrentImages.Count == 0)
+                    {
+                        <div class="product-gallery-empty">@L10n.T("products.imagesEmpty")</div>
+                    }
+                    else
+                    {
+                        var activeImage = GetActiveImage();
+
+                        if (activeImage is not null)
                         {
-                            <option value="@c.Id">@c.Name</option>
+                            <div class="product-gallery-stage">
+                                <img class="product-gallery-image" src="@activeImage.ImageUrl" alt="@_product.Name" onerror="this.onerror=null;this.src='/resources/repair-tool.png';" />
+
+                                @if (CurrentImages.Count > 1)
+                                {
+                                    <button type="button" class="product-gallery-nav product-gallery-nav-prev" @onclick="ShowPreviousImage" aria-label="@L10n.T("products.previousImage")">
+                                        ‹
+                                    </button>
+                                    <button type="button" class="product-gallery-nav product-gallery-nav-next" @onclick="ShowNextImage" aria-label="@L10n.T("products.nextImage")">
+                                        ›
+                                    </button>
+                                    <div class="product-gallery-counter">@(_activeImageIndex + 1) / @CurrentImages.Count</div>
+                                }
+                            </div>
                         }
-                    </select>
-                </div>
-            </div>
 
-            <div class="form-group mt-3">
-                <label class="form-label">@L10n.T("common.description")</label>
-                <textarea class="form-control" rows="3" @bind="_editModel.Description" disabled="@(!_edit)"></textarea>
-            </div>
+                        @if (CurrentImages.Count > 1)
+                        {
+                            <div class="product-gallery-thumbs" aria-label="@L10n.T("common.images")">
+                                @for (var i = 0; i < CurrentImages.Count; i++)
+                                {
+                                    var imageIndex = i;
+                                    var image = CurrentImages[imageIndex];
+                                    var isActiveImage = imageIndex == _activeImageIndex;
 
-            <div class="form-grid form-grid-3 mt-3">
-                <div class="form-group">
-                    <label class="form-label">@L10n.T("common.price")</label>
-                    <div class="input-group">
-                        <span class="input-group-text">@L10n.T("common.currency")</span>
-                        <input type="number" class="form-control" @bind="_editModel.Price" disabled="@(!_edit)" step="0.01" min="0" />
+                                    <button
+                                        type="button"
+                                        class="product-gallery-thumb @(isActiveImage ? "is-active" : null)"
+                                        @onclick="() => SelectImage(imageIndex)"
+                                        aria-label="@string.Format(L10n.T("products.viewImageNumber"), imageIndex + 1)">
+                                        <img src="@image.ImageUrl" alt="" onerror="this.onerror=null;this.src='/resources/repair-tool.png';" />
+                                        @if (image.IsMain)
+                                        {
+                                            <span class="product-gallery-thumb-badge">@L10n.T("products.mainImage")</span>
+                                        }
+                                    </button>
+                                }
+                            </div>
+                        }
+                    }
+
+                    @if (_edit)
+                    {
+                        <div class="product-image-manager">
+                            <div class="product-image-manager-header">
+                                <div>
+                                    <div class="detail-section-title mb-2">@L10n.T("common.images")</div>
+                                    <div class="product-image-manager-help">@L10n.T("products.imagesManagerHelp")</div>
+                                </div>
+                            </div>
+
+                            @if (CurrentImages.Count == 0)
+                            {
+                                <div class="product-image-empty-list">@L10n.T("products.imagesEmpty")</div>
+                            }
+                            else
+                            {
+                                <div class="product-image-list">
+                                    @for (var i = 0; i < CurrentImages.Count; i++)
+                                    {
+                                        var imageIndex = i;
+                                        var image = CurrentImages[imageIndex];
+                                        var isActiveImage = imageIndex == _activeImageIndex;
+
+                                        <div class="product-image-row @(isActiveImage ? "is-active" : null)">
+                                            <button type="button" class="product-image-preview" @onclick="() => SelectImage(imageIndex)" aria-label="@string.Format(L10n.T("products.viewImageNumber"), imageIndex + 1)">
+                                                <img src="@image.ImageUrl" alt="" onerror="this.onerror=null;this.src='/resources/repair-tool.png';" />
+                                            </button>
+
+                                            <div class="product-image-meta">
+                                                <div class="product-image-title">@string.Format(L10n.T("products.imageNumber"), imageIndex + 1)</div>
+                                                <div class="product-image-flags">
+                                                    @if (image.IsMain)
+                                                    {
+                                                        <span class="product-image-flag">@L10n.T("products.mainImage")</span>
+                                                    }
+                                                    @if (isActiveImage)
+                                                    {
+                                                        <span class="product-image-flag product-image-flag-active">@L10n.T("products.currentImage")</span>
+                                                    }
+                                                </div>
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                class="btn btn-outline-danger btn-sm"
+                                                @onclick="() => PromptDeleteImage(image.Id)"
+                                                disabled="@(_imageActionBusy || _saving)">
+                                                @L10n.T("common.delete")
+                                            </button>
+                                        </div>
+                                    }
+                                </div>
+                            }
+
+                            <div class="product-image-upload-panel">
+                                <label class="form-label">@L10n.T("products.addImages")</label>
+                                <InputFile @key="_imageInputVersion" OnChange="OnImagesSelected" multiple accept=".jpg,.jpeg,.png,.webp,.gif" class="form-control" disabled="@(_imageActionBusy || _saving)" />
+                                <div class="form-text">@L10n.T("products.imagesHelp")</div>
+
+                                @if (_selectedImages.Count > 0)
+                                {
+                                    <div class="mt-2 small text-muted">@_selectedImages.Count @L10n.T("products.imagesSelected")</div>
+                                    <ul class="small mt-2 mb-0 ps-3">
+                                        @foreach (var image in _selectedImages)
+                                        {
+                                            <li>@image.Name</li>
+                                        }
+                                    </ul>
+                                }
+
+                                <div class="product-image-upload-actions">
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline-primary"
+                                        @onclick="UploadImagesAsync"
+                                        disabled="@(_imageActionBusy || _saving || _selectedImages.Count == 0)">
+                                        @L10n.T("products.uploadImages")
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </section>
+
+                <section class="product-form-panel">
+                    <div class="form-grid form-grid-2">
+                        <div class="form-group">
+                            <label class="form-label">@L10n.T("common.name")</label>
+                            <input class="form-control" @bind="_editModel.Name" disabled="@(!_edit || _imageActionBusy)" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">@L10n.T("common.category")</label>
+                            <select class="form-select" @bind="_editModel.CategoryId" disabled="@(!_edit || _imageActionBusy)">
+                                <option value="">— @L10n.T("common.none") —</option>
+                                @foreach (var c in _categories)
+                                {
+                                    <option value="@c.Id">@c.Name</option>
+                                }
+                            </select>
+                        </div>
                     </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">@L10n.T("common.discount") (%)</label>
-                    <div class="input-group">
-                        <input type="number" class="form-control" @bind="_editModel.Discount" disabled="@(!_edit)" min="0" max="100" />
-                        <span class="input-group-text">%</span>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">@L10n.T("common.stockQuantity")</label>
-                    <input type="number" class="form-control" @bind="_editModel.StockQuantity" disabled="@(!_edit)" min="0" />
-                </div>
-            </div>
 
-            <div class="form-group mt-3">
-                <label class="form-label">@L10n.T("common.active")</label>
-                <div class="form-check form-switch mt-1">
-                    <input class="form-check-input" type="checkbox" id="chkActive" @bind="_editModel.IsActive" disabled="@(!_edit)" />
-                    <label class="form-check-label" for="chkActive">
-                        @(_editModel.IsActive ? L10n.T("products.activeVisible") : L10n.T("products.inactiveHidden"))
-                    </label>
-                </div>
+                    <div class="form-group mt-3">
+                        <label class="form-label">@L10n.T("common.description")</label>
+                        <textarea class="form-control" rows="3" @bind="_editModel.Description" disabled="@(!_edit || _imageActionBusy)"></textarea>
+                    </div>
+
+                    <div class="form-grid form-grid-3 mt-3">
+                        <div class="form-group">
+                            <label class="form-label">@L10n.T("common.price")</label>
+                            <div class="input-group">
+                                <span class="input-group-text">@L10n.T("common.currency")</span>
+                                <input type="number" class="form-control" @bind="_editModel.Price" disabled="@(!_edit || _imageActionBusy)" step="0.01" min="0" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">@L10n.T("common.discount") (%)</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" @bind="_editModel.Discount" disabled="@(!_edit || _imageActionBusy)" min="0" max="100" />
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">@L10n.T("common.stockQuantity")</label>
+                            <input type="number" class="form-control" @bind="_editModel.StockQuantity" disabled="@(!_edit || _imageActionBusy)" min="0" />
+                        </div>
+                    </div>
+
+                    <div class="form-group mt-3">
+                        <label class="form-label">@L10n.T("common.active")</label>
+                        <div class="form-check form-switch mt-1">
+                            <input class="form-check-input" type="checkbox" id="chkActive" @bind="_editModel.IsActive" disabled="@(!_edit || _imageActionBusy)" />
+                            <label class="form-check-label" for="chkActive">
+                                @(_editModel.IsActive ? L10n.T("products.activeVisible") : L10n.T("products.inactiveHidden"))
+                            </label>
+                        </div>
+                    </div>
+                </section>
             </div>
         </div>
     </div>
@@ -111,6 +254,21 @@ else
     @if (_saveMsg is not null)
     {
         <div class="status-toast @(_saveOk ? "toast-ok" : "toast-err")">@_saveMsg</div>
+    }
+
+    @if (_pendingDeleteImageId is not null)
+    {
+        <div class="dialog-backdrop" @onclick="CancelDeleteImage">
+            <div class="dialog-card" role="dialog" aria-modal="true" aria-labelledby="deleteImageDialogTitle" @onclick:stopPropagation="true">
+                <div class="dialog-icon">🗑️</div>
+                <h4 class="dialog-title" id="deleteImageDialogTitle">@L10n.T("products.deleteImageTitle")</h4>
+                <p class="dialog-text">@L10n.T("products.deleteImageMessage")</p>
+                <div class="dialog-actions">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelDeleteImage" disabled="@_imageActionBusy">@L10n.T("common.cancel")</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmDeleteImageAsync" disabled="@_imageActionBusy">@L10n.T("products.deleteImageConfirm")</button>
+                </div>
+            </div>
+        </div>
     }
 }
 
@@ -121,10 +279,17 @@ else
     private ProductModel? _product;
     private UpdateProductDto _editModel = new();
     private List<CategoryModel> _categories = new();
+    private List<IBrowserFile> _selectedImages = new();
     private bool _loading = true;
     private bool _edit;
+    private bool _saving;
+    private bool _imageActionBusy;
     private string? _saveMsg;
     private bool _saveOk;
+    private int _activeImageIndex;
+    private int? _pendingDeleteImageId;
+    private int _imageInputVersion;
+    private IReadOnlyList<ProductImage> CurrentImages => _product?.Images ?? new List<ProductImage>();
 
     void GoBack() => Nav.NavigateTo("/products");
 
@@ -138,36 +303,146 @@ else
         _edit = false;
         if (_product is not null)
         {
-            _editModel.Name = _product.Name;
-            _editModel.Description = _product.Description;
-            _editModel.Price = _product.Price;
-            _editModel.Discount = _product.Discount;
-            _editModel.StockQuantity = _product.StockQuantity;
-            _editModel.CategoryId = _product.CategoryId;
-            _editModel.IsActive = _product.IsActive;
+            ApplyProductToEditModel(_product);
         }
+
+        _selectedImages.Clear();
+        _imageInputVersion++;
+        _pendingDeleteImageId = null;
     }
 
     async Task Save()
     {
         if (_product is null) return;
+
+        _saving = true;
         var updated = await ProductSvc.UpdateProductAsync(_product.Id, _editModel);
         if (updated is not null)
         {
-            _product = updated;
+            _product = NormalizeProduct(updated);
             _edit = false;
-            _saveMsg = L10n.T("products.saved");
-            _saveOk = true;
+            _selectedImages.Clear();
+            SyncActiveImageIndex();
+            _saving = false;
+            await ShowStatusAsync(L10n.T("products.saved"), true);
         }
         else
         {
-            _saveMsg = L10n.T("products.saveFailed");
-            _saveOk = false;
+            _saving = false;
+            await ShowStatusAsync(L10n.T("products.saveFailed"), false);
         }
-        StateHasChanged();
-        await Task.Delay(3000);
-        _saveMsg = null;
-        StateHasChanged();
+    }
+
+    private void OnImagesSelected(InputFileChangeEventArgs args)
+    {
+        _selectedImages = args.GetMultipleFiles().ToList();
+    }
+
+    private async Task UploadImagesAsync()
+    {
+        if (_product is null || _selectedImages.Count == 0)
+        {
+            return;
+        }
+
+        if (_selectedImages.Any(file => !IsSupportedImage(file)))
+        {
+            await ShowStatusAsync(L10n.T("products.imagesValidation"), false);
+            return;
+        }
+
+        try
+        {
+            _imageActionBusy = true;
+
+            var uploadResult = await ProductSvc.UploadProductImagesAsync(_product.Id, _selectedImages);
+            if (uploadResult.Success)
+            {
+                await RefreshProductImagesAsync(_product.Id);
+                _selectedImages.Clear();
+                _imageInputVersion++;
+                SyncActiveImageIndex();
+                await ShowStatusAsync(L10n.T("products.imagesUploaded"), true);
+            }
+            else
+            {
+                await ShowStatusAsync(L10n.T("products.imagesUploadFailed"), false);
+            }
+        }
+        catch
+        {
+            await ShowStatusAsync(L10n.T("products.imagesUploadFailed"), false);
+        }
+        finally
+        {
+            _imageActionBusy = false;
+        }
+    }
+
+    private async Task DeleteImageAsync(int imageId)
+    {
+        if (_product is null)
+        {
+            return;
+        }
+
+        _imageActionBusy = true;
+
+        var deleteResult = await ProductSvc.DeleteProductImageAsync(_product.Id, imageId);
+        if (deleteResult.Success)
+        {
+            if (deleteResult.Product is not null)
+            {
+                if (_edit)
+                {
+                    _product.Images = OrderImages(deleteResult.Product.Images);
+                }
+                else
+                {
+                    _product = NormalizeProduct(deleteResult.Product);
+                }
+            }
+            else
+            {
+                _product.Images = OrderImages(CurrentImages.Where(image => image.Id != imageId));
+            }
+
+            SyncActiveImageIndex();
+            _imageActionBusy = false;
+            await ShowStatusAsync(L10n.T("products.imageDeleted"), true);
+        }
+        else
+        {
+            _imageActionBusy = false;
+            await ShowStatusAsync(L10n.T("products.imageDeleteFailed"), false);
+        }
+    }
+
+    private void PromptDeleteImage(int imageId)
+    {
+        _pendingDeleteImageId = imageId;
+    }
+
+    private void CancelDeleteImage()
+    {
+        if (_imageActionBusy)
+        {
+            return;
+        }
+
+        _pendingDeleteImageId = null;
+    }
+
+    private async Task ConfirmDeleteImageAsync()
+    {
+        if (_pendingDeleteImageId is null)
+        {
+            return;
+        }
+
+        var imageId = _pendingDeleteImageId.Value;
+        _pendingDeleteImageId = null;
+        await DeleteImageAsync(imageId);
     }
 
     private async Task LoadAsync()
@@ -177,23 +452,144 @@ else
 
         var productTask = ProductSvc.GetProductAsync(Id);
         var categoriesTask = CategorySvc.GetCategoriesAsync();
-        _product = await productTask;
+        _product = NormalizeProduct(await productTask);
         _categories = await categoriesTask;
 
         if (_product is not null)
         {
-            _editModel = new UpdateProductDto
-            {
-                Name = _product.Name,
-                Description = _product.Description,
-                Price = _product.Price,
-                Discount = _product.Discount,
-                StockQuantity = _product.StockQuantity,
-                CategoryId = _product.CategoryId,
-                IsActive = _product.IsActive
-            };
+            ApplyProductToEditModel(_product);
+            SyncActiveImageIndex();
         }
 
         _loading = false;
+    }
+
+    private async Task RefreshProductImagesAsync(int productId)
+    {
+        var refreshedProduct = NormalizeProduct(await ProductSvc.GetProductAsync(productId));
+        if (refreshedProduct is null || _product is null)
+        {
+            return;
+        }
+
+        _product.Images = refreshedProduct.Images;
+        SyncActiveImageIndex();
+    }
+
+    private ProductImage? GetActiveImage()
+    {
+        if (CurrentImages.Count == 0)
+        {
+            return null;
+        }
+
+        SyncActiveImageIndex();
+        return CurrentImages[_activeImageIndex];
+    }
+
+    private void SelectImage(int index)
+    {
+        if (index < 0 || index >= CurrentImages.Count)
+        {
+            return;
+        }
+
+        _activeImageIndex = index;
+    }
+
+    private void ShowPreviousImage()
+    {
+        if (CurrentImages.Count <= 1)
+        {
+            return;
+        }
+
+        _activeImageIndex = (_activeImageIndex - 1 + CurrentImages.Count) % CurrentImages.Count;
+    }
+
+    private void ShowNextImage()
+    {
+        if (CurrentImages.Count <= 1)
+        {
+            return;
+        }
+
+        _activeImageIndex = (_activeImageIndex + 1) % CurrentImages.Count;
+    }
+
+    private void SyncActiveImageIndex()
+    {
+        if (CurrentImages.Count == 0)
+        {
+            _activeImageIndex = 0;
+            return;
+        }
+
+        if (_activeImageIndex < 0)
+        {
+            _activeImageIndex = 0;
+        }
+        else if (_activeImageIndex >= CurrentImages.Count)
+        {
+            _activeImageIndex = CurrentImages.Count - 1;
+        }
+    }
+
+    private void ApplyProductToEditModel(ProductModel product)
+    {
+        _editModel = new UpdateProductDto
+        {
+            Name = product.Name,
+            Description = product.Description,
+            Price = product.Price,
+            Discount = product.Discount,
+            StockQuantity = product.StockQuantity,
+            CategoryId = product.CategoryId,
+            IsActive = product.IsActive
+        };
+    }
+
+    private static ProductModel? NormalizeProduct(ProductModel? product)
+    {
+        if (product is null)
+        {
+            return null;
+        }
+
+        product.Images = OrderImages(product.Images);
+        return product;
+    }
+
+    private static List<ProductImage> OrderImages(IEnumerable<ProductImage> images)
+    {
+        return images
+            .Where(image => image is not null)
+            .Where(image => !string.IsNullOrWhiteSpace(image.ImageUrl))
+            .OrderByDescending(image => image.IsMain)
+            .ThenBy(image => image.Id)
+            .ToList();
+    }
+
+    private async Task ShowStatusAsync(string message, bool success)
+    {
+        _saveMsg = message;
+        _saveOk = success;
+        StateHasChanged();
+        await Task.Delay(3000);
+        _saveMsg = null;
+        StateHasChanged();
+    }
+
+    private static bool IsSupportedImage(IBrowserFile file)
+    {
+        var allowedContentTypes = new[]
+        {
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/gif"
+        };
+
+        return allowedContentTypes.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase);
     }
 }
