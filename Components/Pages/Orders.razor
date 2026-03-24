@@ -40,42 +40,32 @@ else if (FilteredOrders.Count == 0)
 }
 else
 {
-    <div class="table-wrap">
-        <table class="modern-table">
-            <thead>
-                <tr>
-                    <th>@L10n.T("orders.number")</th>
-                    <th>@L10n.T("common.customer")</th>
-                    <th>@L10n.T("common.date")</th>
-                    <th>@L10n.T("common.items")</th>
-                    <th>@L10n.T("common.total")</th>
-                    <th>@L10n.T("common.status")</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var o in FilteredOrders)
-                {
-                    <tr class="clickable" @onclick="() => OpenOrder(o.Id)">
-                        <td><span class="order-id">#@o.Id</span></td>
-                        <td>
-                            <div class="customer-name">@o.CustomerFullName</div>
-                            @if (!string.IsNullOrWhiteSpace(o.Email))
-                            {
-                                <div class="customer-sub">@o.Email</div>
-                            }
-                            else if (!string.IsNullOrWhiteSpace(o.Phone))
-                            {
-                                <div class="customer-sub">@o.Phone</div>
-                            }
-                        </td>
-                        <td style="white-space:nowrap">@L10n.FormatChisinauDate(o.OrderDate, "dd MMM yyyy · HH:mm")</td>
-                        <td>@o.OrderItems.Count</td>
-                        <td class="order-total">@L10n.FormatPrice(o.TotalPrice)</td>
-                        <td><span class="status-badge status-@NormalizeStatusCss(o.Status)">@L10n.TranslateOrderStatus(o.Status)</span></td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+    <div class="order-card-list">
+        @foreach (var o in FilteredOrders)
+        {
+            <div class="order-card" @onclick="() => OpenOrder(o.Id)">
+                <div class="order-card-top">
+                    <span class="order-id">#@o.Id</span>
+                    <span class="status-badge status-@NormalizeStatusCss(o.Status)">@L10n.TranslateOrderStatus(o.Status)</span>
+                    <span class="order-card-date">@L10n.FormatChisinauDate(o.OrderDate, "dd MMM · HH:mm")</span>
+                </div>
+                <div class="order-card-customer">
+                    <span class="customer-name">@o.CustomerFullName</span>
+                    @if (!string.IsNullOrWhiteSpace(o.Email))
+                    {
+                        <span class="customer-sub">@o.Email</span>
+                    }
+                    else if (!string.IsNullOrWhiteSpace(o.Phone))
+                    {
+                        <span class="customer-sub">@o.Phone</span>
+                    }
+                </div>
+                <div class="order-card-footer">
+                    <span class="order-card-items">@o.OrderItems.Count @L10n.T("common.items")</span>
+                    <span class="order-total">@L10n.FormatPrice(o.TotalPrice)</span>
+                </div>
+            </div>
+        }
     </div>
 }
 

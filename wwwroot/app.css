@@ -130,24 +130,19 @@ h1:focus {
     text-align: start;
 }
 
+/* Handle safe-area insets for Android and iOS (status bar + nav bar) */
 .status-bar-safe-area {
-    display: none;
+    display: flex;
+    position: sticky;
+    top: 0;
+    height: env(safe-area-inset-top, 0px);
+    background-color: #0f172a;
+    width: 100%;
+    z-index: 100;
 }
 
-@supports (-webkit-touch-callout: none) {
-    .status-bar-safe-area {
-        display: flex;
-        position: sticky;
-        top: 0;
-        height: env(safe-area-inset-top);
-        background-color: #f7f7f7;
-        width: 100%;
-        z-index: 1;
-    }
-
-    .flex-column, .navbar-brand {
-        padding-left: env(safe-area-inset-left);
-    }
+body {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* ─── Page Header ──────────────────────────────────────────────── */
@@ -548,6 +543,7 @@ h1:focus {
 .order-id {
     font-weight: 700;
     color: #e8621a;
+    font-size: 1rem;
 }
 
 .customer-name {
@@ -564,6 +560,66 @@ h1:focus {
 .order-total {
     font-weight: 700;
     color: #0f172a;
+}
+
+/* ─── Order Card List ──────────────────────────────────────────── */
+.order-card-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.order-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 1rem 1.1rem;
+    cursor: pointer;
+    transition: border-color 0.18s, box-shadow 0.18s;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.order-card:hover,
+.order-card:active {
+    border-color: #e8621a;
+    box-shadow: 0 4px 14px rgba(232, 98, 26, 0.14);
+}
+
+.order-card-top {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.order-card-date {
+    margin-left: auto;
+    font-size: 0.77rem;
+    color: #94a3b8;
+    white-space: nowrap;
+}
+
+.order-card-customer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.order-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 0.5rem;
+    border-top: 1px solid #f1f5f9;
+    margin-top: 0.1rem;
+}
+
+.order-card-items {
+    font-size: 0.78rem;
+    color: #94a3b8;
 }
 
 /* ─── Status Change ────────────────────────────────────────────── */
