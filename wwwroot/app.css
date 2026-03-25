@@ -1204,3 +1204,135 @@ body {
         width: 100%;
     }
 }
+
+/* ─── Responsive Order Table (mobile card view) ────────────────── */
+@media (max-width: 768px) {
+    /* Strip the table-wrap chrome so cards render freely */
+    .order-table-wrap {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        border-radius: 0;
+        overflow: visible;
+        padding: 0;
+    }
+
+    .modern-table--order {
+        display: block;
+        width: 100%;
+    }
+
+    .modern-table--order thead {
+        display: none;
+    }
+
+    .modern-table--order tbody {
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+    }
+
+    /* Each row becomes a card */
+    .modern-table--order tbody tr {
+        display: block;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 0.7rem 0.95rem 0.25rem;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Each cell is a label-value row */
+    .modern-table--order tbody td {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 0.5rem;
+        padding: 0.42rem 0;
+        border-bottom: 1px solid #f1f5f9;
+        text-align: left !important;
+        font-size: 0.875rem;
+    }
+
+    .modern-table--order tbody td:last-child {
+        border-bottom: none;
+        padding-bottom: 0.55rem;
+    }
+
+    /* Show data-label as a small uppercase prefix */
+    .modern-table--order tbody td::before {
+        content: attr(data-label);
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #94a3b8;
+        flex-shrink: 0;
+        padding-top: 0.15rem;
+        min-width: 72px;
+    }
+
+    /* Hide the line-number column on mobile */
+    .modern-table--order tbody td.col-num {
+        display: none;
+    }
+
+    /* Product cell: stacked, full-width, no label prefix */
+    .modern-table--order tbody td.col-product {
+        flex-direction: column;
+        align-items: flex-start;
+        border-bottom: 1px solid #e8edf2;
+        padding-bottom: 0.65rem;
+        margin-bottom: 0.15rem;
+    }
+
+    .modern-table--order tbody td.col-product::before {
+        display: none;
+    }
+
+    /* Subtotal cell: accent colour + bolder weight */
+    .modern-table--order tbody td.col-subtotal {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    /* Total row */
+    .modern-table--order tfoot {
+        display: block;
+        margin-top: 0.7rem;
+    }
+
+    .modern-table--order tfoot tr {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.85rem 1rem;
+        background: linear-gradient(135deg, #fff7f2, #fff3eb);
+        border: 1px solid #fcd4b8;
+        border-left: 4px solid #e8621a;
+        border-radius: 12px;
+    }
+
+    /* Override inline styles on tfoot cells */
+    .modern-table--order tfoot td {
+        display: block;
+        padding: 0 !important;
+        border-top: none !important;
+        background: transparent !important;
+    }
+
+    .modern-table--order tfoot td:first-child {
+        text-align: left !important;
+        font-size: 0.72rem;
+        letter-spacing: 0.05em;
+    }
+
+    .modern-table--order tfoot td:last-child {
+        text-align: right !important;
+        font-size: 1.2rem !important;
+        font-weight: 800 !important;
+        color: #e8621a !important;
+        padding-bottom: 0 !important;
+    }
+}
