@@ -20,6 +20,8 @@ public static class MauiProgram
 
 		builder.Services.AddMauiBlazorWebView();
 
+
+
 		builder.Services.AddSingleton(_ => new HttpClient
 		{
 			BaseAddress = new Uri(GetApiBaseUrl())

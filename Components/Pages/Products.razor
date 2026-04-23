@@ -41,7 +41,14 @@ else
     <div class="product-grid">
         @foreach (var p in FilteredProducts)
         {
+            var mainImg = p.Images.FirstOrDefault(i => i.IsMain) ?? p.Images.FirstOrDefault();
             <div class="product-card" @onclick="() => ViewProduct(p.Id)">
+                @if (mainImg is not null)
+                {
+                    <div class="product-card-image">
+                        <img src="@mainImg.ImageUrl" alt="@p.Name" onerror="this.onerror=null;this.src='/resources/repair-tool.png';" />
+                    </div>
+                }
                 <div class="product-card-header">
                     <div>
                         <div class="product-name">@p.Name</div>
