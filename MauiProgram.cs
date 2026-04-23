@@ -29,6 +29,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton<Services.ProductService>();
 		builder.Services.AddSingleton<Services.CategoryService>();
 		builder.Services.AddSingleton<Services.OrderService>();
+		builder.Services.AddSingleton<Services.IImagePickerService, Services.ImagePickerService>();
 
 #if DEBUG
 		builder.Services.AddBlazorWebViewDeveloperTools();

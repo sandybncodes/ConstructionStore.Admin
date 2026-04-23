@@ -189,7 +189,7 @@ public class ProductService
             {
                 var stream = file.OpenReadStream(MaxUploadSizeBytes);
                 var streamContent = new StreamContent(stream);
-                streamContent.Headers.ContentType = MediaTypeHeaderValue.Parse(file.ContentType);
+                streamContent.Headers.ContentType = MediaTypeHeaderValue.Parse(ResolveImageContentType(file.Name, file.ContentType));
                 content.Add(streamContent, "files", file.Name);
             }
 
@@ -263,11 +263,85 @@ public class ProductService
         }
     }
 
+    public async Task<ProductImageUploadResult> UploadProductImagesAsync(int productId, IReadOnlyList<FileResult> files)
+    {
+        if (files.Count == 0)
+        {
+            return new ProductImageUploadResult { Success = true };
+        }
+
+        try
+        {
+            using var content = new MultipartFormDataContent();
+
+            foreach (var file in files)
+            {
+                var stream = await file.OpenReadAsync();
+                var streamContent = new StreamContent(stream);
+                var contentType = ResolveImageContentType(file.FileName, null);
+                streamContent.Headers.ContentType = MediaTypeHeaderValue.Parse(contentType);
+                content.Add(streamContent, "files", file.FileName);
+            }
+
+            using var req = new HttpRequestMessage(HttpMethod.Post, $"api/admin/products/{productId}/images")
+            {
+                Content = content
+            };
+
+            AddAuthorizationHeader(req);
+
+            using var resp = await _http.SendAsync(req);
+            if (!resp.IsSuccessStatusCode)
+            {
+                return new ProductImageUploadResult
+                {
+                    Success = false,
+                    ErrorMessage = await resp.Content.ReadAsStringAsync()
+                };
+            }
+
+            var json = await resp.Content.ReadAsStringAsync();
+            var images = JsonSerializer.Deserialize<List<ProductImage>>(json, JsonOptions) ?? new List<ProductImage>();
+            return new ProductImageUploadResult
+            {
+                Success = true,
+                Images = images
+            };
+        }
+        catch (Exception exception)
+        {
+            return new ProductImageUploadResult
+            {
+                Success = false,
+                ErrorMessage = exception.Message
+            };
+        }
+    }
+
     private void AddAuthorizationHeader(HttpRequestMessage request)
     {
         if (_auth?.CurrentUser is not null && !string.IsNullOrEmpty(_auth.CurrentUser.Token))
         {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _auth.CurrentUser.Token);
         }
+    }
+
+    private static string ResolveImageContentType(string fileName, string? providedContentType)
+    {
+        if (!string.IsNullOrWhiteSpace(providedContentType))
+        {
+            return providedContentType;
+        }
+
+        return Path.GetExtension(fileName).ToLowerInvariant() switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            ".webp" => "image/webp",
+            ".gif" => "image/gif",
+            ".heic" => "image/heic",
+            ".heif" => "image/heif",
+            _ => "application/octet-stream"
+        };
     }
 }

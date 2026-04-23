@@ -3,7 +3,8 @@
 @inject CategoryService CategorySvc
 @inject NavigationManager Nav
 @inject LocalizationService L10n
-@using Microsoft.AspNetCore.Components.Forms
+@inject ConstructionStore.Admin.Services.IImagePickerService ImagePicker
+@using Microsoft.Maui.Storage
 
 <div class="page-header">
     <button class="back-btn" @onclick="GoBack">← @L10n.T("common.back")</button>
@@ -86,7 +87,13 @@ else
 
             <div class="form-group mt-3">
                 <label class="form-label">@L10n.T("common.images")</label>
-                <InputFile OnChange="OnImagesSelected" multiple accept=".jpg,.jpeg,.png,.webp,.gif" class="form-control" />
+                <div class="d-flex align-items-center gap-2 mt-1">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="PickImagesAsync">📷 @L10n.T("products.chooseImages")</button>
+                    @if (_selectedImages.Count > 0)
+                    {
+                        <button type="button" class="btn btn-link btn-sm text-danger p-0" @onclick="ClearImages">@L10n.T("common.clear")</button>
+                    }
+                </div>
                 <div class="form-text">@L10n.T("products.imagesHelp")</div>
                 @if (_selectedImages.Count > 0)
                 {
@@ -94,7 +101,7 @@ else
                     <ul class="small mt-2 mb-0 ps-3">
                         @foreach (var image in _selectedImages)
                         {
-                            <li>@image.Name</li>
+                            <li>@image.FileName</li>
                         }
                     </ul>
                 }
@@ -111,7 +118,7 @@ else
 @code {
     private readonly CreateProductDto _model = new() { IsActive = true };
     private List<CategoryModel> _categories = new();
-    private List<IBrowserFile> _selectedImages = new();
+    private List<FileResult> _selectedImages = new();
     private bool _loading = true;
     private bool _saving;
     private string? _saveMsg;
@@ -125,9 +132,15 @@ else
 
     private void GoBack() => Nav.NavigateTo("/products");
 
-    private void OnImagesSelected(InputFileChangeEventArgs args)
+    private void ClearImages() => _selectedImages.Clear();
+
+    private async Task PickImagesAsync()
     {
-        _selectedImages = args.GetMultipleFiles().ToList();
+        var picked = await ImagePicker.PickImagesAsync();
+        if (picked is not null)
+        {
+            _selectedImages = picked.ToList();
+        }
     }
 
     private async Task Save()
@@ -137,7 +150,7 @@ else
             return;
         }
 
-        if (_selectedImages.Any(file => !IsSupportedImage(file)))
+        if (_selectedImages.Any(file => !IsSupportedImageFile(file)))
         {
             _saveMsg = L10n.T("products.imagesValidation");
             _saveOk = false;
@@ -180,16 +193,15 @@ else
         StateHasChanged();
     }
 
-    private static bool IsSupportedImage(IBrowserFile file)
+    private static bool IsSupportedImageFile(FileResult file)
     {
-        var allowedContentTypes = new[]
-        {
-            "image/jpeg",
-            "image/png",
-            "image/webp",
-            "image/gif"
-        };
-
-        return allowedContentTypes.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase);
+        var extension = Path.GetExtension(file.FileName);
+        return extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase)
+            || extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase)
+            || extension.Equals(".png", StringComparison.OrdinalIgnoreCase)
+            || extension.Equals(".webp", StringComparison.OrdinalIgnoreCase)
+            || extension.Equals(".gif", StringComparison.OrdinalIgnoreCase)
+            || extension.Equals(".heic", StringComparison.OrdinalIgnoreCase)
+            || extension.Equals(".heif", StringComparison.OrdinalIgnoreCase);
     }
 }

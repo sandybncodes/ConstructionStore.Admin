@@ -3,4 +3,10 @@
     <application android:allowBackup="true" android:icon="@mipmap/appicon" android:roundIcon="@mipmap/appicon_round" android:supportsRtl="true"></application>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Storage access for Android 12 and below -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <!-- Media access for Android 13+ -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <!-- Partial media access for Android 14+ -->
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
 </manifest>
