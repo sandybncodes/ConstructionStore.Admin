@@ -37,13 +37,11 @@ public sealed class ProductImageDeleteResult
 public class ProductModel
 {
     private List<ProductImage>? _images;
+    private List<ProductVariantModel>? _variants;
 
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public decimal Price { get; set; }
-    public int Discount { get; set; }
-    public int StockQuantity { get; set; }
     public int? CategoryId { get; set; }
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -53,15 +51,44 @@ public class ProductModel
         get => _images ??= new List<ProductImage>();
         set => _images = value ?? new List<ProductImage>();
     }
+    public List<ProductVariantModel> Variants
+    {
+        get => _variants ??= new List<ProductVariantModel>();
+        set => _variants = value ?? new List<ProductVariantModel>();
+    }
+}
+
+public class AttributeModel
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+
+public class VariantAttributeValueModel
+{
+    public int AttributeId { get; set; }
+    public string AttributeName { get; set; } = string.Empty;
+    public string? ValueText { get; set; }
+    public decimal? ValueNumeric { get; set; }
+    public string? Unit { get; set; }
+}
+
+public class ProductVariantModel
+{
+    public int Id { get; set; }
+    public int ProductId { get; set; }
+    public decimal Price { get; set; }
+    public int StockQuantity { get; set; }
+    public string? Sku { get; set; }
+    public bool IsActive { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public List<VariantAttributeValueModel> Attributes { get; set; } = new();
 }
 
 public class UpdateProductDto
 {
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public decimal Price { get; set; }
-    public int Discount { get; set; }
-    public int StockQuantity { get; set; }
     public int? CategoryId { get; set; }
     public bool IsActive { get; set; }
 }
@@ -70,11 +97,43 @@ public class CreateProductDto
 {
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public decimal Price { get; set; }
-    public int Discount { get; set; }
-    public int StockQuantity { get; set; }
     public int? CategoryId { get; set; }
     public bool IsActive { get; set; } = true;
+    public List<CreateProductVariantDto> Variants { get; set; } = new();
+}
+
+public class CreateProductVariantDto
+{
+    public decimal Price { get; set; }
+    public int StockQuantity { get; set; }
+    public string? Sku { get; set; }
+    public bool IsActive { get; set; } = true;
+    public List<CreateVariantAttributeDto> Attributes { get; set; } = new();
+}
+
+public class CreateVariantAttributeDto
+{
+    public int AttributeId { get; set; }
+    public string? ValueText { get; set; }
+    public decimal? ValueNumeric { get; set; }
+    public string? Unit { get; set; }
+}
+
+public class UpdateVariantAttributeDto
+{
+    public int AttributeId { get; set; }
+    public string? ValueText { get; set; }
+    public decimal? ValueNumeric { get; set; }
+    public string? Unit { get; set; }
+}
+
+public class UpdateProductVariantDto
+{
+    public decimal Price { get; set; }
+    public int StockQuantity { get; set; }
+    public string? Sku { get; set; }
+    public bool IsActive { get; set; }
+    public List<UpdateVariantAttributeDto> Attributes { get; set; } = new();
 }
 
 public class ProductService
@@ -88,6 +147,25 @@ public class ProductService
     {
         _http = http;
         _auth = auth;
+    }
+
+    public async Task<List<AttributeModel>> GetAttributesAsync()
+    {
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Get, "api/admin/attributes");
+            AddAuthorizationHeader(req);
+
+            using var resp = await _http.SendAsync(req);
+            if (!resp.IsSuccessStatusCode) return new List<AttributeModel>();
+
+            var json = await resp.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<List<AttributeModel>>(json, JsonOptions) ?? new();
+        }
+        catch
+        {
+            return new();
+        }
     }
 
     public async Task<List<ProductModel>> GetProductsAsync()
@@ -315,6 +393,63 @@ public class ProductService
                 Success = false,
                 ErrorMessage = exception.Message
             };
+        }
+    }
+
+    public async Task<ProductModel?> UpdateVariantAsync(int productId, int variantId, UpdateProductVariantDto dto)
+    {
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Put, $"api/admin/products/{productId}/variants/{variantId}")
+            {
+                Content = JsonContent.Create(dto)
+            };
+            AddAuthorizationHeader(req);
+            using var resp = await _http.SendAsync(req);
+            if (!resp.IsSuccessStatusCode) return null;
+            var json = await resp.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<ProductModel>(json, JsonOptions);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<ProductModel?> CreateVariantAsync(int productId, CreateProductVariantDto dto)
+    {
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Post, $"api/admin/products/{productId}/variants")
+            {
+                Content = JsonContent.Create(dto)
+            };
+            AddAuthorizationHeader(req);
+            using var resp = await _http.SendAsync(req);
+            if (!resp.IsSuccessStatusCode) return null;
+            var json = await resp.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<ProductModel>(json, JsonOptions);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<(bool Success, ProductModel? Product)> DeleteVariantAsync(int productId, int variantId)
+    {
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Delete, $"api/admin/products/{productId}/variants/{variantId}");
+            AddAuthorizationHeader(req);
+            using var resp = await _http.SendAsync(req);
+            if (!resp.IsSuccessStatusCode) return (false, null);
+            var json = await resp.Content.ReadAsStringAsync();
+            return (true, JsonSerializer.Deserialize<ProductModel>(json, JsonOptions));
+        }
+        catch
+        {
+            return (false, null);
         }
     }
 

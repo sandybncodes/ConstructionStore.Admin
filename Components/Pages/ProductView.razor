@@ -57,20 +57,20 @@ else
         <div class="detail-body">
             <div class="product-detail-layout">
                 <section class="product-gallery-panel">
-                    <div class="detail-section-title">@L10n.T("products.imagesGallery")</div>
-
-                    @if (CurrentImages.Count == 0)
+                    @if (CurrentImages.Count == 0 && !_edit)
                     {
-                        <div class="product-gallery-empty">@L10n.T("products.imagesEmpty")</div>
+                        <div class="product-gallery-stage">
+                            <img class="product-gallery-image" src="/images/repair_tools.png" alt="@_product.Name" />
+                        </div>
                     }
-                    else
+                    @if (CurrentImages.Count > 0)
                     {
-                        var activeImage = GetActiveImage();
+                        <div class="detail-section-title">@L10n.T("products.imagesGallery")</div>
 
-                        if (activeImage is not null)
+                        @if (GetActiveImage() is { } activeImage)
                         {
                             <div class="product-gallery-stage">
-                                <img class="product-gallery-image" src="@activeImage.ImageUrl" alt="@_product.Name" onerror="this.onerror=null;this.src='/resources/repair-tool.png';" />
+                                <img class="product-gallery-image" src="@activeImage.ImageUrl" alt="@_product.Name" onerror="this.onerror=null;this.src='/images/repair_tools.png';" />
 
                                 @if (CurrentImages.Count > 1)
                                 {
@@ -99,7 +99,7 @@ else
                                         class="product-gallery-thumb @(isActiveImage ? "is-active" : null)"
                                         @onclick="() => SelectImage(imageIndex)"
                                         aria-label="@string.Format(L10n.T("products.viewImageNumber"), imageIndex + 1)">
-                                        <img src="@image.ImageUrl" alt="" onerror="this.onerror=null;this.src='/resources/repair-tool.png';" />
+                                        <img src="@image.ImageUrl" alt="" onerror="this.onerror=null;this.src='/images/repair_tools.png';" />
                                         @if (image.IsMain)
                                         {
                                             <span class="product-gallery-thumb-badge">@L10n.T("products.mainImage")</span>
@@ -135,7 +135,7 @@ else
 
                                         <div class="product-image-row @(isActiveImage ? "is-active" : null)">
                                             <button type="button" class="product-image-preview" @onclick="() => SelectImage(imageIndex)" aria-label="@string.Format(L10n.T("products.viewImageNumber"), imageIndex + 1)">
-                                                <img src="@image.ImageUrl" alt="" onerror="this.onerror=null;this.src='/resources/repair-tool.png';" />
+                                                <img src="@image.ImageUrl" alt="" onerror="this.onerror=null;this.src='/images/repair_tools.png';" />
                                             </button>
 
                                             <div class="product-image-meta">
@@ -223,27 +223,6 @@ else
                         <textarea class="form-control" rows="3" @bind="_editModel.Description" disabled="@(!_edit || _imageActionBusy)"></textarea>
                     </div>
 
-                    <div class="form-grid form-grid-3 mt-3">
-                        <div class="form-group">
-                            <label class="form-label">@L10n.T("common.price")</label>
-                            <div class="input-group">
-                                <span class="input-group-text">@L10n.T("common.currency")</span>
-                                <input type="number" class="form-control" @bind="_editModel.Price" disabled="@(!_edit || _imageActionBusy)" step="0.01" min="0" />
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">@L10n.T("common.discount") (%)</label>
-                            <div class="input-group">
-                                <input type="number" class="form-control" @bind="_editModel.Discount" disabled="@(!_edit || _imageActionBusy)" min="0" max="100" />
-                                <span class="input-group-text">%</span>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">@L10n.T("common.stockQuantity")</label>
-                            <input type="number" class="form-control" @bind="_editModel.StockQuantity" disabled="@(!_edit || _imageActionBusy)" min="0" />
-                        </div>
-                    </div>
-
                     <div class="form-group mt-3">
                         <label class="form-label">@L10n.T("common.active")</label>
                         <div class="form-check form-switch mt-1">
@@ -258,9 +237,267 @@ else
         </div>
     </div>
 
+    <!-- ── Variants ──────────────────────────────────── -->
+    <div class="detail-card mt-3">
+        <div class="detail-card-header">
+            <div>
+                <h3 class="detail-title">@L10n.T("products.variants")</h3>
+                <p class="detail-sub mb-0">@L10n.T("products.variantsHint")</p>
+            </div>
+            @if (_edit)
+            {
+                <button class="btn btn-outline-primary btn-sm" @onclick="StartNewVariant"
+                        disabled="@(_saving || _imageActionBusy || _newVariantForm is not null || _attributes.Count == 0)">
+                    + @L10n.T("products.addVariant")
+                </button>
+            }
+        </div>
+        <div class="detail-body">
+            @if (_variantForms.Count == 0)
+            {
+                <div class="empty-state py-3">
+                    <div class="empty-icon">📦</div>
+                    <p class="mb-0 text-muted" style="font-size:0.9rem;">@L10n.T("products.variantsHint")</p>
+                </div>
+            }
+            else
+            {
+                @for (int vi = 0; vi < _variantForms.Count; vi++)
+                {
+                    var idx = vi;
+                    var vf = _variantForms[idx];
+                    <div class="variant-card @(idx > 0 ? "mt-3" : "")">
+                        <div class="variant-card-header">
+                            <span class="variant-number">@string.Format(L10n.T("products.variantNo"), idx + 1)</span>
+                            <span class="variant-display-name">@VariantUtils.GetVariantDisplayName(_product!, _product!.Variants[idx])</span>
+                            @if (_edit)
+                            {
+                                <button type="button" class="btn btn-link btn-sm text-danger p-0 ms-auto"
+                                        @onclick="() => PromptDeleteVariant(vf.Id)"
+                                        disabled="@(_saving || _imageActionBusy)">
+                                    🗑 @L10n.T("products.removeVariant")
+                                </button>
+                            }
+                            else
+                            {
+                                @if (vf.IsActive)
+                                {
+                                    <span class="active-badge ms-2">@L10n.TranslateActiveState(true)</span>
+                                }
+                                else
+                                {
+                                    <span class="inactive-badge ms-2">@L10n.TranslateActiveState(false)</span>
+                                }
+                            }
+                        </div>
+                        <div class="variant-card-body">
+                            <div class="form-grid form-grid-2 mb-3">
+                                <div class="form-group">
+                                    <label class="form-label">@L10n.T("products.variantPrice")</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">@L10n.T("common.currency")</span>
+                                        <input type="number" class="form-control" @bind="vf.Price" step="0.01" min="0" disabled="@(!_edit || _imageActionBusy)" />
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">@L10n.T("products.variantStock")</label>
+                                    <input type="number" class="form-control" @bind="vf.StockQuantity" min="0" disabled="@(!_edit || _imageActionBusy)" />
+                                </div>
+                            </div>
+
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="chkVfActive_@idx" @bind="vf.IsActive" disabled="@(!_edit || _imageActionBusy)" />
+                                <label class="form-check-label" for="chkVfActive_@idx">@L10n.T("products.variantActive")</label>
+                            </div>
+
+                            <div class="detail-section-title">@L10n.T("products.variantAttributes")</div>
+                            <div class="form-grid form-grid-2">
+                                @foreach (var attrEntry in vf.AttributeEntries)
+                                {
+                                    <div class="form-group variant-attr-row">
+                                        <label class="form-label variant-attr-label">@attrEntry.AttributeName</label>
+                                        <div class="input-group input-group-sm">
+                                            @if (IsNumericAttribute(attrEntry.AttributeName))
+                                            {
+                                                <input type="number"
+                                                       class="form-control"
+                                                       placeholder="@L10n.T("products.variantAttributeValue")"
+                                                       step="any"
+                                                       min="0"
+                                                       @bind="attrEntry.ValueInput"
+                                                       @bind:after="() => OnNumericValueChanged(attrEntry)"
+                                                       disabled="@(!_edit || _imageActionBusy)" />
+                                            }
+                                            else
+                                            {
+                                                <input type="text"
+                                                       class="form-control"
+                                                       placeholder="@L10n.T("products.variantAttributeValue")"
+                                                       @bind="attrEntry.ValueInput"
+                                                       disabled="@(!_edit || _imageActionBusy)" />
+                                            }
+                                            @if (HasUnitDropdown(attrEntry.AttributeName))
+                                            {
+                                                <select class="form-select form-select-sm variant-unit-select @(attrEntry.ShowUnitError ? "is-invalid" : "")"
+                                                        @onchange="e => OnUnitSelectChanged(e, attrEntry)"
+                                                        disabled="@(!_edit || _imageActionBusy)">
+                                                    <option value="—" selected="@(IsNoneUnit(attrEntry.Unit))">—</option>
+                                                    @foreach (var opt in GetUnitOptions(attrEntry.AttributeName))
+                                                    {
+                                                        <option value="@opt" selected="@(attrEntry.Unit == opt)">@opt</option>
+                                                    }
+                                                </select>
+                                            }
+                                            else
+                                            {
+                                                <input type="text"
+                                                       class="form-control variant-unit-input @(attrEntry.ShowUnitError ? "is-invalid" : "")"
+                                                       placeholder="@L10n.T("products.variantAttributeUnit")"
+                                                       value="@attrEntry.Unit"
+                                                       @oninput="e => OnUnitInput(e, attrEntry)"
+                                                       disabled="@(!_edit || _imageActionBusy)" />
+                                            }
+                                        </div>
+                                        @if (attrEntry.ShowUnitError)
+                                        {
+                                            <small class="text-danger">@L10n.T("products.unitRequired")</small>
+                                        }
+                                    </div>
+                                }
+                            </div>
+
+                            @if (_edit)
+                            {
+                                <div class="mt-3">
+                                    <button class="btn btn-sm btn-primary"
+                                            @onclick="() => SaveVariantAsync(idx)"
+                                            disabled="@(_saving || _imageActionBusy)">
+                                        @if (_saving)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                        }
+                                        💾 @L10n.T("products.saveVariant")
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+
+            @if (_newVariantForm is not null)
+            {
+                var newIdx = _variantForms.Count;
+                <div class="variant-card @(newIdx > 0 ? "mt-3" : "")">
+                    <div class="variant-card-header">
+                        <span class="variant-number">@string.Format(L10n.T("products.variantNo"), newIdx + 1)</span>
+                        <button type="button" class="btn btn-link btn-sm text-danger p-0 ms-auto"
+                                @onclick="CancelNewVariant" disabled="@_saving">
+                            @L10n.T("common.cancel")
+                        </button>
+                    </div>
+                    <div class="variant-card-body">
+                        <div class="form-grid form-grid-2 mb-3">
+                            <div class="form-group">
+                                <label class="form-label">@L10n.T("products.variantPrice")</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">@L10n.T("common.currency")</span>
+                                    <input type="number" class="form-control" @bind="_newVariantForm.Price" step="0.01" min="0" />
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">@L10n.T("products.variantStock")</label>
+                                <input type="number" class="form-control" @bind="_newVariantForm.StockQuantity" min="0" />
+                            </div>
+                        </div>
+
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="chkNewVfActive" @bind="_newVariantForm.IsActive" />
+                            <label class="form-check-label" for="chkNewVfActive">@L10n.T("products.variantActive")</label>
+                        </div>
+
+                        <div class="detail-section-title">@L10n.T("products.variantAttributes")</div>
+                        <div class="form-grid form-grid-2">
+                            @foreach (var attrEntry in _newVariantForm.AttributeEntries)
+                            {
+                                <div class="form-group variant-attr-row">
+                                    <label class="form-label variant-attr-label">@attrEntry.AttributeName</label>
+                                    <div class="input-group input-group-sm">
+                                        @if (IsNumericAttribute(attrEntry.AttributeName))
+                                        {
+                                            <input type="number" class="form-control"
+                                                   placeholder="@L10n.T("products.variantAttributeValue")"
+                                                   step="any"
+                                                   min="0"
+                                                   @bind="attrEntry.ValueInput"
+                                                   @bind:after="() => OnNumericValueChanged(attrEntry)" />
+                                        }
+                                        else
+                                        {
+                                            <input type="text" class="form-control"
+                                                   placeholder="@L10n.T("products.variantAttributeValue")"
+                                                   @bind="attrEntry.ValueInput" />
+                                        }
+                                        @if (HasUnitDropdown(attrEntry.AttributeName))
+                                        {
+                                            <select class="form-select form-select-sm variant-unit-select @(attrEntry.ShowUnitError ? "is-invalid" : "")"
+                                                    @onchange="e => OnUnitSelectChanged(e, attrEntry)">
+                                                <option value="—" selected="@(IsNoneUnit(attrEntry.Unit))">—</option>
+                                                @foreach (var opt in GetUnitOptions(attrEntry.AttributeName))
+                                                {
+                                                    <option value="@opt" selected="@(attrEntry.Unit == opt)">@opt</option>
+                                                }
+                                            </select>
+                                        }
+                                        else
+                                        {
+                                            <input type="text" class="form-control variant-unit-input @(attrEntry.ShowUnitError ? "is-invalid" : "")"
+                                                   placeholder="@L10n.T("products.variantAttributeUnit")"
+                                                   value="@attrEntry.Unit"
+                                                   @oninput="e => OnUnitInput(e, attrEntry)" />
+                                        }
+                                    </div>
+                                    @if (attrEntry.ShowUnitError)
+                                    {
+                                        <small class="text-danger">@L10n.T("products.unitRequired")</small>
+                                    }
+                                </div>
+                            }
+                        </div>
+
+                        <div class="mt-3">
+                            <button class="btn btn-sm btn-primary" @onclick="AddVariantAsync" disabled="@_saving">
+                                @if (_saving)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                }
+                                💾 @L10n.T("products.saveVariant")
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
     @if (_saveMsg is not null)
     {
         <div class="status-toast @(_saveOk ? "toast-ok" : "toast-err")">@_saveMsg</div>
+    }
+
+    @if (_pendingDeleteVariantId is not null)
+    {
+        <div class="dialog-backdrop" @onclick="CancelDeleteVariant">
+            <div class="dialog-card" role="dialog" aria-modal="true" aria-labelledby="deleteVariantDialogTitle" @onclick:stopPropagation="true">
+                <div class="dialog-icon">🗑️</div>
+                <h4 class="dialog-title" id="deleteVariantDialogTitle">@L10n.T("products.deleteVariantTitle")</h4>
+                <p class="dialog-text">@L10n.T("products.deleteVariantMessage")</p>
+                <div class="dialog-actions">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelDeleteVariant" disabled="@_saving">@L10n.T("common.cancel")</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmDeleteVariantAsync" disabled="@_saving">@L10n.T("products.deleteVariantConfirm")</button>
+                </div>
+            </div>
+        </div>
     }
 
     @if (_pendingDeleteImageId is not null)
@@ -283,9 +520,91 @@ else
     [Parameter]
     public int Id { get; set; }
 
+    private static readonly HashSet<string> NumericAttributeNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Cantitate in ambalaj", "Grosime", "Latime", "Lungime", "Inaltime"
+    };
+
+    private static readonly Dictionary<string, string[]> UnitOptionsMap = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Latime"]               = new[] { "mm", "cm", "m" },
+        ["Lungime"]              = new[] { "mm", "cm", "m" },
+        ["Inaltime"]             = new[] { "mm", "cm", "m" },
+        ["Grosime"]              = new[] { "mm", "cm" },
+        ["Cantitate in ambalaj"] = new[] { "buc.", "g", "Kg" },
+    };
+
+    private static bool IsNumericAttribute(string name) => NumericAttributeNames.Contains(name);
+    private static bool HasUnitDropdown(string name) => UnitOptionsMap.ContainsKey(name);
+    private static string[] GetUnitOptions(string name) => UnitOptionsMap.TryGetValue(name, out var opts) ? opts : Array.Empty<string>();
+
+    private static void OnNumericValueChanged(AttributeEntry entry)
+    {
+        if (string.IsNullOrWhiteSpace(entry.ValueInput))
+            entry.ShowUnitError = false;
+    }
+
+    private static void OnUnitInput(ChangeEventArgs e, AttributeEntry entry)
+    {
+        entry.Unit = e.Value?.ToString();
+        if (!string.IsNullOrWhiteSpace(entry.Unit))
+            entry.ShowUnitError = false;
+    }
+
+    private static bool IsNoneUnit(string? unit) => string.IsNullOrWhiteSpace(unit) || unit == "—";
+
+    private static void OnUnitSelectChanged(ChangeEventArgs e, AttributeEntry entry)
+    {
+        entry.Unit = e.Value?.ToString() ?? "—";
+        if (!IsNoneUnit(entry.Unit))
+            entry.ShowUnitError = false;
+    }
+
+    private static bool ValidateNumericAttributeUnits(IEnumerable<AttributeEntry> entries)
+    {
+        var valid = true;
+        foreach (var e in entries)
+        {
+            if (IsNumericAttribute(e.AttributeName))
+            {
+                if (!string.IsNullOrWhiteSpace(e.ValueInput) && IsNoneUnit(e.Unit))
+                {
+                    e.ShowUnitError = true;
+                    valid = false;
+                }
+                else
+                {
+                    e.ShowUnitError = false;
+                }
+            }
+        }
+        return valid;
+    }
+
+    private sealed class AttributeEntry
+    {
+        public int AttributeId { get; set; }
+        public string AttributeName { get; set; } = string.Empty;
+        public string? ValueInput { get; set; }
+        public string? Unit { get; set; }
+        public bool ShowUnitError { get; set; }
+    }
+
+    private sealed class VariantForm
+    {
+        public int Id { get; set; }
+        public decimal Price { get; set; }
+        public int StockQuantity { get; set; }
+        public string? Sku { get; set; }
+        public bool IsActive { get; set; } = true;
+        public List<AttributeEntry> AttributeEntries { get; set; } = new();
+    }
+
     private ProductModel? _product;
     private UpdateProductDto _editModel = new();
     private List<CategoryModel> _categories = new();
+    private List<AttributeModel> _attributes = new();
+    private List<VariantForm> _variantForms = new();
     private List<FileResult> _selectedImages = new();
     private bool _loading = true;
     private bool _edit;
@@ -295,6 +614,8 @@ else
     private bool _saveOk;
     private int _activeImageIndex;
     private int? _pendingDeleteImageId;
+    private int? _pendingDeleteVariantId;
+    private VariantForm? _newVariantForm;
     private int _imageInputVersion;
     private IReadOnlyList<ProductImage> CurrentImages => _product?.Images ?? new List<ProductImage>();
 
@@ -311,11 +632,14 @@ else
         if (_product is not null)
         {
             ApplyProductToEditModel(_product);
+            BuildVariantForms(_product);
         }
 
         _selectedImages.Clear();
         _imageInputVersion++;
         _pendingDeleteImageId = null;
+        _pendingDeleteVariantId = null;
+        _newVariantForm = null;
     }
 
     async Task Save()
@@ -465,12 +789,15 @@ else
 
         var productTask = ProductSvc.GetProductAsync(Id);
         var categoriesTask = CategorySvc.GetCategoriesAsync();
+        var attributesTask = ProductSvc.GetAttributesAsync();
         _product = NormalizeProduct(await productTask);
         _categories = await categoriesTask;
+        _attributes = await attributesTask;
 
         if (_product is not null)
         {
             ApplyProductToEditModel(_product);
+            BuildVariantForms(_product);
             SyncActiveImageIndex();
         }
 
@@ -554,12 +881,191 @@ else
         {
             Name = product.Name,
             Description = product.Description,
-            Price = product.Price,
-            Discount = product.Discount,
-            StockQuantity = product.StockQuantity,
             CategoryId = product.CategoryId,
             IsActive = product.IsActive
         };
+    }
+
+    private void BuildVariantForms(ProductModel product)
+    {
+        _variantForms = product.Variants.Select(v =>
+        {
+            var form = new VariantForm
+            {
+                Id = v.Id,
+                Price = v.Price,
+                StockQuantity = v.StockQuantity,
+                Sku = v.Sku,
+                IsActive = v.IsActive
+            };
+
+            foreach (var attr in _attributes)
+            {
+                var existing = v.Attributes.FirstOrDefault(a => a.AttributeId == attr.Id);
+                form.AttributeEntries.Add(new AttributeEntry
+                {
+                    AttributeId = attr.Id,
+                    AttributeName = attr.Name,
+                    ValueInput = existing?.ValueNumeric?.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                                 ?? existing?.ValueText,
+                    Unit = string.IsNullOrEmpty(existing?.Unit) ? (HasUnitDropdown(attr.Name) ? "—" : null) : existing.Unit
+                });
+            }
+
+            return form;
+        }).ToList();
+    }
+
+    private async Task SaveVariantAsync(int idx)
+    {
+        if (_product is null || idx < 0 || idx >= _variantForms.Count) return;
+        if (_saving) return;
+
+        var vf = _variantForms[idx];
+        if (!ValidateNumericAttributeUnits(vf.AttributeEntries))
+        {
+            StateHasChanged();
+            await ShowStatusAsync(L10n.T("products.unitRequired"), false);
+            return;
+        }
+
+        _saving = true;
+        StateHasChanged();
+
+        var dto = new UpdateProductVariantDto
+        {
+            Price = vf.Price,
+            StockQuantity = vf.StockQuantity,
+            Sku = vf.Sku,
+            IsActive = vf.IsActive,
+            Attributes = vf.AttributeEntries
+                .Where(e => !string.IsNullOrWhiteSpace(e.ValueInput))
+                .Select(e => new UpdateVariantAttributeDto
+                {
+                    AttributeId = e.AttributeId,
+                    ValueText = e.ValueInput,
+                    Unit = IsNoneUnit(e.Unit) ? null : e.Unit
+                })
+                .ToList()
+        };
+
+        var updated = await ProductSvc.UpdateVariantAsync(_product.Id, vf.Id, dto);
+        if (updated is not null)
+        {
+            _product = NormalizeProduct(updated);
+            if (_product is not null) BuildVariantForms(_product);
+            _saving = false;
+            await ShowStatusAsync(L10n.T("products.variantSaved"), true);
+        }
+        else
+        {
+            _saving = false;
+            await ShowStatusAsync(L10n.T("products.variantSaveFailed"), false);
+        }
+    }
+
+    private void PromptDeleteVariant(int variantId)
+    {
+        _pendingDeleteVariantId = variantId;
+    }
+
+    private void CancelDeleteVariant()
+    {
+        if (_saving) return;
+        _pendingDeleteVariantId = null;
+    }
+
+    private async Task ConfirmDeleteVariantAsync()
+    {
+        if (_pendingDeleteVariantId is null || _product is null) return;
+
+        var variantId = _pendingDeleteVariantId.Value;
+        _pendingDeleteVariantId = null;
+
+        _saving = true;
+        StateHasChanged();
+
+        var (success, updated) = await ProductSvc.DeleteVariantAsync(_product.Id, variantId);
+        if (success)
+        {
+            _product = NormalizeProduct(updated ?? _product);
+            if (_product is not null) BuildVariantForms(_product);
+            _saving = false;
+            await ShowStatusAsync(L10n.T("products.variantDeleted"), true);
+        }
+        else
+        {
+            _saving = false;
+            await ShowStatusAsync(L10n.T("products.variantDeleteFailed"), false);
+        }
+    }
+
+    private void StartNewVariant()
+    {
+        if (_attributes.Count == 0) return;
+        _newVariantForm = new VariantForm { IsActive = true };
+        foreach (var attr in _attributes)
+        {
+            _newVariantForm.AttributeEntries.Add(new AttributeEntry
+            {
+                AttributeId = attr.Id,
+                AttributeName = attr.Name,
+                Unit = HasUnitDropdown(attr.Name) ? "—" : null
+            });
+        }
+    }
+
+    private void CancelNewVariant()
+    {
+        _newVariantForm = null;
+    }
+
+    private async Task AddVariantAsync()
+    {
+        if (_product is null || _newVariantForm is null) return;
+        if (_saving) return;
+
+        if (!ValidateNumericAttributeUnits(_newVariantForm.AttributeEntries))
+        {
+            StateHasChanged();
+            await ShowStatusAsync(L10n.T("products.unitRequired"), false);
+            return;
+        }
+
+        _saving = true;
+        StateHasChanged();
+
+        var dto = new CreateProductVariantDto
+        {
+            Price = _newVariantForm.Price,
+            StockQuantity = _newVariantForm.StockQuantity,
+            Sku = _newVariantForm.Sku,
+            IsActive = _newVariantForm.IsActive,
+            Attributes = _newVariantForm.AttributeEntries
+                .Where(e => !string.IsNullOrWhiteSpace(e.ValueInput))
+                .Select(e => new CreateVariantAttributeDto
+                {
+                    AttributeId = e.AttributeId,
+                    ValueText = e.ValueInput,
+                    Unit = IsNoneUnit(e.Unit) ? null : e.Unit
+                })
+                .ToList()
+        };
+
+        var updated = await ProductSvc.CreateVariantAsync(_product.Id, dto);
+        if (updated is not null)
+        {
+            _product = NormalizeProduct(updated);
+            if (_product is not null) BuildVariantForms(_product);
+            _newVariantForm = null;
+            _saving = false;
+            await ShowStatusAsync(L10n.T("products.variantAdded"), true);
+        }
+        else
+        {
+            _saving = false;
+            await ShowStatusAsync(L10n.T("products.variantAddFailed"), false);
+        }
     }
 
     private static ProductModel? NormalizeProduct(ProductModel? product)

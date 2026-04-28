@@ -20,18 +20,26 @@
 }
 else
 {
-    <div class="detail-card">
+    <!-- ── Product basics ──────────────────────────────── -->
+    <div class="detail-card mb-3">
         <div class="detail-card-header">
             <div>
                 <h3 class="detail-title">@L10n.T("products.addNew")</h3>
             </div>
             <div class="d-flex align-items-center gap-2">
                 <button class="btn btn-secondary" @onclick="GoBack">@L10n.T("common.cancel")</button>
-                <button class="btn btn-primary" @onclick="Save">💾 @L10n.T("common.save")</button>
+                <button class="btn btn-primary" @onclick="Save" disabled="@_saving">
+                    @if (_saving)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                    }
+                    💾 @L10n.T("common.save")
+                </button>
             </div>
         </div>
 
         <div class="detail-body">
+            <!-- Name & Category -->
             <div class="form-grid form-grid-2">
                 <div class="form-group">
                     <label class="form-label">@L10n.T("common.name")</label>
@@ -49,32 +57,13 @@ else
                 </div>
             </div>
 
+            <!-- Description -->
             <div class="form-group mt-3">
                 <label class="form-label">@L10n.T("common.description")</label>
                 <textarea class="form-control" rows="3" @bind="_model.Description"></textarea>
             </div>
 
-            <div class="form-grid form-grid-3 mt-3">
-                <div class="form-group">
-                    <label class="form-label">@L10n.T("common.price")</label>
-                    <div class="input-group">
-                        <span class="input-group-text">@L10n.T("common.currency")</span>
-                        <input type="number" class="form-control" @bind="_model.Price" step="0.01" min="0" />
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">@L10n.T("common.discount") (%)</label>
-                    <div class="input-group">
-                        <input type="number" class="form-control" @bind="_model.Discount" min="0" max="100" />
-                        <span class="input-group-text">%</span>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">@L10n.T("common.stockQuantity")</label>
-                    <input type="number" class="form-control" @bind="_model.StockQuantity" min="0" />
-                </div>
-            </div>
-
+            <!-- Active toggle -->
             <div class="form-group mt-3">
                 <label class="form-label">@L10n.T("common.active")</label>
                 <div class="form-check form-switch mt-1">
@@ -85,6 +74,7 @@ else
                 </div>
             </div>
 
+            <!-- Images -->
             <div class="form-group mt-3">
                 <label class="form-label">@L10n.T("common.images")</label>
                 <div class="d-flex align-items-center gap-2 mt-1">
@@ -109,6 +99,128 @@ else
         </div>
     </div>
 
+    <!-- ── Variants ──────────────────────────────────── -->
+    <div class="detail-card mb-3">
+        <div class="detail-card-header">
+            <div>
+                <h3 class="detail-title">@L10n.T("products.variants")</h3>
+                <p class="detail-sub mb-0">@L10n.T("products.variantsHint")</p>
+            </div>
+            <button class="btn btn-outline-primary btn-sm" @onclick="AddVariant" disabled="@(_attributes.Count == 0)">
+                + @L10n.T("products.addVariant")
+            </button>
+        </div>
+
+        <div class="detail-body">
+            @if (_attributes.Count == 0)
+            {
+                <div class="empty-state py-3">
+                    <div class="empty-icon">⚠️</div>
+                    <p class="mb-0">@L10n.T("products.attributesLoadFailed")</p>
+                </div>
+            }
+            else if (_variants.Count == 0)
+            {
+                <div class="empty-state py-3">
+                    <div class="empty-icon">📦</div>
+                    <p class="mb-0 text-muted" style="font-size:0.9rem;">@L10n.T("products.variantsHint")</p>
+                </div>
+            }
+            else
+            {
+                @for (int vi = 0; vi < _variants.Count; vi++)
+                {
+                    var idx = vi;
+                    var variant = _variants[idx];
+                    <div class="variant-card @(idx > 0 ? "mt-3" : "")">
+                        <!-- Variant header -->
+                        <div class="variant-card-header">
+                            <span class="variant-number">@string.Format(L10n.T("products.variantNo"), idx + 1)</span>
+                            <button type="button" class="btn btn-link btn-sm text-danger p-0 ms-auto" @onclick="() => RemoveVariant(idx)">
+                                🗑 @L10n.T("products.removeVariant")
+                            </button>
+                        </div>
+
+                        <!-- Price / Stock / Active -->
+                        <div class="variant-card-body">
+                            <div class="form-grid form-grid-2 mb-3">
+                                <div class="form-group">
+                                    <label class="form-label">@L10n.T("products.variantPrice")</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">@L10n.T("common.currency")</span>
+                                        <input type="number" class="form-control" @bind="variant.Price" step="0.01" min="0" />
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">@L10n.T("products.variantStock")</label>
+                                    <input type="number" class="form-control" @bind="variant.StockQuantity" min="0" />
+                                </div>
+                            </div>
+
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="chkVariantActive_@idx" @bind="variant.IsActive" />
+                                <label class="form-check-label" for="chkVariantActive_@idx">@L10n.T("products.variantActive")</label>
+                            </div>
+
+                            <!-- Attributes grid -->
+                            <div class="detail-section-title">@L10n.T("products.variantAttributes")</div>
+                            <div class="form-grid form-grid-2">
+                                @foreach (var attrEntry in variant.AttributeEntries)
+                                {
+                                    <div class="form-group variant-attr-row">
+                                        <label class="form-label variant-attr-label">@attrEntry.AttributeName</label>
+                                        <div class="input-group input-group-sm">
+                                            @if (IsNumericAttribute(attrEntry.AttributeName))
+                                            {
+                                                <input type="number"
+                                                       class="form-control"
+                                                       placeholder="@L10n.T("products.variantAttributeValue")"
+                                                       step="any"
+                                                       min="0"
+                                                       @bind="attrEntry.ValueInput"
+                                                       @bind:after="() => OnNumericValueChanged(attrEntry)" />
+                                            }
+                                            else
+                                            {
+                                                <input type="text"
+                                                       class="form-control"
+                                                       placeholder="@L10n.T("products.variantAttributeValue")"
+                                                       @bind="attrEntry.ValueInput" />
+                                            }
+                                            @if (HasUnitDropdown(attrEntry.AttributeName))
+                                            {
+                                                <select class="form-select form-select-sm variant-unit-select @(attrEntry.ShowUnitError ? "is-invalid" : "")"
+                                                        @onchange="e => OnUnitSelectChanged(e, attrEntry)">
+                                                    <option value="—" selected="@(IsNoneUnit(attrEntry.Unit))">—</option>
+                                                    @foreach (var opt in GetUnitOptions(attrEntry.AttributeName))
+                                                    {
+                                                        <option value="@opt" selected="@(attrEntry.Unit == opt)">@opt</option>
+                                                    }
+                                                </select>
+                                            }
+                                            else
+                                            {
+                                                <input type="text"
+                                                       class="form-control variant-unit-input @(attrEntry.ShowUnitError ? "is-invalid" : "")"
+                                                       placeholder="@L10n.T("products.variantAttributeUnit")"
+                                                       value="@attrEntry.Unit"
+                                                       @oninput="e => OnUnitInput(e, attrEntry)" />
+                                            }
+                                        </div>
+                                        @if (attrEntry.ShowUnitError)
+                                        {
+                                            <small class="text-danger">@L10n.T("products.unitRequired")</small>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
     @if (_saveMsg is not null)
     {
         <div class="status-toast @(_saveOk ? "toast-ok" : "toast-err")">@_saveMsg</div>
@@ -116,22 +228,112 @@ else
 }
 
 @code {
+    private static readonly HashSet<string> NumericAttributeNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Cantitate in ambalaj", "Grosime", "Latime", "Lungime", "Inaltime"
+    };
+
+    private static readonly Dictionary<string, string[]> UnitOptionsMap = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Latime"]               = new[] { "mm", "cm", "m" },
+        ["Lungime"]              = new[] { "mm", "cm", "m" },
+        ["Inaltime"]             = new[] { "mm", "cm", "m" },
+        ["Grosime"]              = new[] { "mm", "cm" },
+        ["Cantitate in ambalaj"] = new[] { "buc.", "g", "Kg" },
+    };
+
+    private static bool IsNumericAttribute(string name) => NumericAttributeNames.Contains(name);
+    private static bool HasUnitDropdown(string name) => UnitOptionsMap.ContainsKey(name);
+    private static string[] GetUnitOptions(string name) => UnitOptionsMap.TryGetValue(name, out var opts) ? opts : Array.Empty<string>();
+
+    private static void OnNumericValueChanged(AttributeEntry entry)
+    {
+        if (string.IsNullOrWhiteSpace(entry.ValueInput))
+            entry.ShowUnitError = false;
+    }
+
+    private static void OnUnitInput(ChangeEventArgs e, AttributeEntry entry)
+    {
+        entry.Unit = e.Value?.ToString();
+        if (!string.IsNullOrWhiteSpace(entry.Unit))
+            entry.ShowUnitError = false;
+    }
+
+    private static bool IsNoneUnit(string? unit) => string.IsNullOrWhiteSpace(unit) || unit == "—";
+
+    private static void OnUnitSelectChanged(ChangeEventArgs e, AttributeEntry entry)
+    {
+        entry.Unit = e.Value?.ToString() ?? "—";
+        if (!IsNoneUnit(entry.Unit))
+            entry.ShowUnitError = false;
+    }
+
+    private static bool ValidateNumericAttributeUnits(IEnumerable<AttributeEntry> entries)
+    {
+        var valid = true;
+        foreach (var e in entries)
+        {
+            if (IsNumericAttribute(e.AttributeName))
+            {
+                if (!string.IsNullOrWhiteSpace(e.ValueInput) && IsNoneUnit(e.Unit))
+                {
+                    e.ShowUnitError = true;
+                    valid = false;
+                }
+                else
+                {
+                    e.ShowUnitError = false;
+                }
+            }
+        }
+        return valid;
+    }
+
+    // ── Working models ──────────────────────────────────────────
+    private sealed class AttributeEntry
+    {
+        public int AttributeId { get; set; }
+        public string AttributeName { get; set; } = string.Empty;
+        public string? ValueInput { get; set; }
+        public string? Unit { get; set; }
+        public bool ShowUnitError { get; set; }
+    }
+
+    private sealed class VariantForm
+    {
+        public decimal Price { get; set; }
+        public int StockQuantity { get; set; }
+        public string? Sku { get; set; }
+        public bool IsActive { get; set; } = true;
+        public List<AttributeEntry> AttributeEntries { get; set; } = new();
+    }
+
+    // ── State ───────────────────────────────────────────────────
     private readonly CreateProductDto _model = new() { IsActive = true };
     private List<CategoryModel> _categories = new();
+    private List<AttributeModel> _attributes = new();
+    private List<VariantForm> _variants = new();
     private List<FileResult> _selectedImages = new();
     private bool _loading = true;
     private bool _saving;
     private string? _saveMsg;
     private bool _saveOk;
 
+    // ── Lifecycle ───────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
     {
-        _categories = await CategorySvc.GetCategoriesAsync();
+        var catTask = CategorySvc.GetCategoriesAsync();
+        var attrTask = ProductSvc.GetAttributesAsync();
+        await Task.WhenAll(catTask, attrTask);
+        _categories = catTask.Result;
+        _attributes = attrTask.Result;
         _loading = false;
     }
 
+    // ── Navigation ──────────────────────────────────────────────
     private void GoBack() => Nav.NavigateTo("/products");
 
+    // ── Images ──────────────────────────────────────────────────
     private void ClearImages() => _selectedImages.Clear();
 
     private async Task PickImagesAsync()
@@ -143,10 +345,50 @@ else
         }
     }
 
+    // ── Variants ────────────────────────────────────────────────
+    private void AddVariant()
+    {
+        var form = new VariantForm();
+        foreach (var attr in _attributes)
+        {
+            form.AttributeEntries.Add(new AttributeEntry
+            {
+                AttributeId = attr.Id,
+                AttributeName = attr.Name,
+                Unit = HasUnitDropdown(attr.Name) ? "—" : null
+            });
+        }
+        _variants.Add(form);
+    }
+
+    private void RemoveVariant(int index)
+    {
+        if (index >= 0 && index < _variants.Count)
+        {
+            _variants.RemoveAt(index);
+        }
+    }
+
+    // ── Save ────────────────────────────────────────────────────
     private async Task Save()
     {
-        if (_saving)
+        if (_saving) return;
+
+        // Validate unit required for numeric attributes
+        var allEntriesValid = true;
+        foreach (var v in _variants)
         {
+            if (!ValidateNumericAttributeUnits(v.AttributeEntries))
+                allEntriesValid = false;
+        }
+        if (!allEntriesValid)
+        {
+            _saveMsg = L10n.T("products.unitRequired");
+            _saveOk = false;
+            StateHasChanged();
+            await Task.Delay(3000);
+            _saveMsg = null;
+            StateHasChanged();
             return;
         }
 
@@ -162,6 +404,35 @@ else
         }
 
         _saving = true;
+        StateHasChanged();
+
+        // Build variants payload
+        _model.Variants = _variants.Select(v => new CreateProductVariantDto
+        {
+            Price = v.Price,
+            StockQuantity = v.StockQuantity,
+            Sku = string.IsNullOrWhiteSpace(v.Sku) ? null : v.Sku.Trim(),
+            IsActive = v.IsActive,
+            Attributes = v.AttributeEntries
+                .Where(a => !string.IsNullOrWhiteSpace(a.ValueInput))
+                .Select(a =>
+                {
+                    var isNumeric = decimal.TryParse(
+                        a.ValueInput?.Trim().Replace(',', '.'),
+                        System.Globalization.NumberStyles.Any,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out var numeric);
+                    return new CreateVariantAttributeDto
+                    {
+                        AttributeId = a.AttributeId,
+                        ValueNumeric = isNumeric ? numeric : null,
+                        ValueText = isNumeric ? null : a.ValueInput?.Trim(),
+                        Unit = IsNoneUnit(a.Unit) ? null : a.Unit!.Trim()
+                    };
+                })
+                .ToList()
+        }).ToList();
+
         var created = await ProductSvc.CreateProductAsync(_model);
         if (created is not null)
         {

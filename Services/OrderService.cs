@@ -12,13 +12,29 @@ public class ProductSummaryInOrder
     public string? Description { get; set; }
 }
 
+public class VariantAttributeInOrder
+{
+    public string AttributeName { get; set; } = string.Empty;
+    public string? ValueText { get; set; }
+    public decimal? ValueNumeric { get; set; }
+    public string? Unit { get; set; }
+}
+
+public class VariantSummaryInOrder
+{
+    public int Id { get; set; }
+    public List<VariantAttributeInOrder> Attributes { get; set; } = new();
+}
+
 public class OrderItemModel
 {
     public int Id { get; set; }
     public int ProductId { get; set; }
+    public int? VariantId { get; set; }
     public int Quantity { get; set; }
     public decimal Price { get; set; }
     public ProductSummaryInOrder? Product { get; set; }
+    public VariantSummaryInOrder? Variant { get; set; }
 }
 
 public class OrderModel

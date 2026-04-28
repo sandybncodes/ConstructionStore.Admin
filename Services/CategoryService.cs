@@ -38,7 +38,14 @@ public class CategoryService
 
     public async Task<List<CategoryModel>> GetCategoriesAsync()
     {
-        return await _http.GetFromJsonAsync<List<CategoryModel>>("api/categories") ?? new();
+        try
+        {
+            return await _http.GetFromJsonAsync<List<CategoryModel>>("api/categories") ?? new();
+        }
+        catch
+        {
+            return new();
+        }
     }
 
     public async Task<CategoryModel?> GetCategoryAsync(int id)

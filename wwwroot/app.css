@@ -1035,6 +1035,76 @@ body {
 }
 
 /* ─── Toast Notifications ──────────────────────────────────────── */
+/* ─── Variant Cards ────────────────────────────────────────────── */
+.variant-card {
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+    transition: border-color 0.2s;
+}
+
+.variant-card:hover {
+    border-color: #e8621a;
+}
+
+.variant-card-header {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1.1rem;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    gap: 0.75rem;
+}
+
+.variant-number {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #e8621a;
+}
+
+.variant-display-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #0f172a;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.variant-card-body {
+    padding: 1.1rem 1.25rem 1.25rem;
+}
+
+.variant-attr-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.variant-attr-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 0;
+}
+
+.variant-unit-input {
+    max-width: 90px;
+    flex: 0 0 90px;
+    color: #64748b;
+}
+
+/* ─── Status Toast ─────────────────────────────────────────────── */
 .status-toast {
     position: fixed;
     bottom: 1.5rem;

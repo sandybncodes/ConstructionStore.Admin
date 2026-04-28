@@ -99,7 +99,11 @@ else
                                     <td class="col-num" style="color:#94a3b8;font-size:0.8rem">@(lineNo++)</td>
                                     <td class="col-product">
                                         <div class="customer-name">@(item.Product?.Name ?? L10n.ProductLabel(item.ProductId))</div>
-                                        @if (!string.IsNullOrWhiteSpace(item.Product?.Description))
+                                        @if (item.Variant?.Attributes is { Count: > 0 })
+                                        {
+                                            <div class="customer-sub">@FormatVariantAttributes(item.Variant.Attributes)</div>
+                                        }
+                                        else if (!string.IsNullOrWhiteSpace(item.Product?.Description))
                                         {
                                             <div class="customer-sub">@item.Product.Description</div>
                                         }
@@ -190,5 +194,21 @@ else
         return string.Equals(status?.Trim(), "NEW", StringComparison.OrdinalIgnoreCase)
             ? "NOU"
             : status ?? "NOU";
+    }
+
+    private static string FormatVariantAttributes(List<VariantAttributeInOrder> attributes)
+    {
+        var parts = attributes
+            .Where(a => !string.IsNullOrWhiteSpace(a.AttributeName))
+            .Select(a =>
+            {
+                var value = a.ValueNumeric.HasValue
+                    ? a.ValueNumeric.Value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)
+                    : a.ValueText ?? string.Empty;
+                return string.IsNullOrWhiteSpace(a.Unit)
+                    ? $"{a.AttributeName}: {value}"
+                    : $"{a.AttributeName}: {value} {a.Unit}";
+            });
+        return string.Join(", ", parts);
     }
 }

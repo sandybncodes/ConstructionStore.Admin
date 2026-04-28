@@ -11,7 +11,7 @@
         <div class="page-header-actions">
             @if (!_loading)
             {
-                <span class="page-count">@FilteredProducts.Count @L10n.T("products.count")</span>
+                <span class="page-count">@FilteredVariantCards.Count @L10n.T("products.count")</span>
             }
             <button class="btn btn-primary" @onclick='() => Nav.NavigateTo("/products/new")'>+ @L10n.T("products.addNew")</button>
         </div>
@@ -29,7 +29,7 @@
         <span>@L10n.T("products.loading")</span>
     </div>
 }
-else if (FilteredProducts.Count == 0)
+else if (FilteredVariantCards.Count == 0)
 {
     <div class="empty-state">
         <div class="empty-icon">📦</div>
@@ -39,22 +39,19 @@ else if (FilteredProducts.Count == 0)
 else
 {
     <div class="product-grid">
-        @foreach (var p in FilteredProducts)
+        @foreach (var card in FilteredVariantCards)
         {
-            var mainImg = p.Images.FirstOrDefault(i => i.IsMain) ?? p.Images.FirstOrDefault();
-            <div class="product-card" @onclick="() => ViewProduct(p.Id)">
-                @if (mainImg is not null)
-                {
-                    <div class="product-card-image">
-                        <img src="@mainImg.ImageUrl" alt="@p.Name" onerror="this.onerror=null;this.src='/resources/repair-tool.png';" />
-                    </div>
-                }
+            var mainImg = card.Images.FirstOrDefault(i => i.IsMain) ?? card.Images.FirstOrDefault();
+            <div class="product-card" @onclick="() => ViewProduct(card.ProductId)">
+                <div class="product-card-image">
+                    <img src="@(mainImg?.ImageUrl ?? "/images/repair_tools.png")" alt="@card.DisplayName" onerror="this.onerror=null;this.src='/images/repair_tools.png';" />
+                </div>
                 <div class="product-card-header">
                     <div>
-                        <div class="product-name">@p.Name</div>
-                        <div class="product-meta">@L10n.T("common.id"): @p.Id</div>
+                        <div class="product-name">@card.DisplayName</div>
+                        <div class="product-meta">@L10n.T("common.id"): @card.ProductId</div>
                     </div>
-                    @if (p.IsActive)
+                    @if (card.IsActive)
                     {
                         <span class="active-badge">@L10n.TranslateActiveState(true)</span>
                     }
@@ -64,31 +61,30 @@ else
                     }
                 </div>
                 <div class="product-card-body">
-                    @if (!string.IsNullOrWhiteSpace(p.Description))
+                    @if (!string.IsNullOrWhiteSpace(card.Description))
                     {
-                        <span class="product-description">@p.Description</span>
+                        <span class="product-description">@card.Description</span>
                     }
-                    @if (!string.IsNullOrEmpty(GetCategoryName(p.CategoryId)))
+                    @if (!string.IsNullOrEmpty(GetCategoryName(card.CategoryId)))
                     {
                         <span class="product-category">
                             <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" fill="currentColor" viewBox="0 0 16 16" style="margin-right:3px"><path d="M1 2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1zM1 7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1z"/></svg>
-                            @GetCategoryName(p.CategoryId)
+                            @GetCategoryName(card.CategoryId)
                         </span>
                     }
                 </div>
                 <div class="product-card-footer">
                     <div>
-                        @if (p.Discount > 0)
+                        @if (card.Price is null)
                         {
-                            <span class="product-price">@L10n.FormatPrice(p.Price * (1 - p.Discount / 100m))</span>
-                            <span class="product-price-strike ms-1">@L10n.FormatPrice(p.Price)</span>
+                            <span class="product-price text-muted">—</span>
                         }
                         else
                         {
-                            <span class="product-price">@L10n.FormatPrice(p.Price)</span>
+                            <span class="product-price">@L10n.FormatPrice(card.Price.Value)</span>
                         }
                     </div>
-                    <span class="product-stock">@L10n.T("products.stock"): @p.StockQuantity</span>
+                    <span class="product-stock">@L10n.T("products.stock"): @card.Stock</span>
                 </div>
             </div>
         }
@@ -96,18 +92,56 @@ else
 }
 
 @code {
+    private sealed record ProductVariantCard(
+        int ProductId,
+        int? VariantId,
+        string DisplayName,
+        string? Description,
+        List<ProductImage> Images,
+        int? CategoryId,
+        bool IsActive,
+        decimal? Price,
+        int Stock);
+
     private List<ProductModel> _products = new();
+    private List<ProductVariantCard> _variantCards = new();
     private List<CategoryModel> _categories = new();
     private bool _loading = true;
     private string _searchText = string.Empty;
     private bool _subscribed;
 
-    private List<ProductModel> FilteredProducts => _products
-        .Where(product =>
+    private List<ProductVariantCard> FilteredVariantCards => _variantCards
+        .Where(card =>
             string.IsNullOrWhiteSpace(_searchText) ||
-            product.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
-            product.Id.ToString().Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+            card.DisplayName.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+            card.ProductId.ToString().Contains(_searchText, StringComparison.OrdinalIgnoreCase))
         .ToList();
+
+    private List<ProductVariantCard> BuildVariantCards()
+    {
+        var cards = new List<ProductVariantCard>();
+        foreach (var p in _products)
+        {
+            if (p.Variants.Count == 0)
+            {
+                cards.Add(new ProductVariantCard(
+                    p.Id, null, p.Name, p.Description,
+                    p.Images, p.CategoryId, p.IsActive, null, 0));
+            }
+            else
+            {
+                foreach (var v in p.Variants)
+                {
+                    cards.Add(new ProductVariantCard(
+                        p.Id, v.Id,
+                        VariantUtils.GetVariantDisplayName(p, v),
+                        p.Description, p.Images, p.CategoryId,
+                        v.IsActive, v.Price, v.StockQuantity));
+                }
+            }
+        }
+        return cards;
+    }
 
     protected override void OnInitialized()
     {
@@ -132,6 +166,7 @@ else
         var categoriesTask = CategorySvc.GetCategoriesAsync();
         _products = await productsTask;
         _categories = await categoriesTask;
+        _variantCards = BuildVariantCards();
         _loading = false;
     }
 
